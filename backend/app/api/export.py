@@ -12,6 +12,7 @@ router = APIRouter(prefix="/api/export", tags=["export"])
 def download_corpus_zip(
     project_id: int = 1,
     include_demo: bool = False,
+    include_external: bool = False,
     session: Session = Depends(get_session),
 ):
     """
@@ -19,7 +20,12 @@ def download_corpus_zip(
     Raw video is strictly excluded.
     """
     try:
-        buf, filename = create_corpus_export_zip(session, project_id=project_id, include_demo=include_demo)
+        buf, filename = create_corpus_export_zip(
+            session,
+            project_id=project_id,
+            include_demo=include_demo,
+            include_external=include_external,
+        )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 

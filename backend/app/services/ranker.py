@@ -7,17 +7,41 @@ Contract:
   (each scaled 0-1.0; frozen test set NEVER feeds it).
 """
 
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 from sqlmodel import Session, select, func
 
 from app.db.models import ConsentRecord, ModelRun, Sample, SignClass, Signer
+from app.services.mock_policy import non_mock_sample_clause
 
-FORMULA_VERSION = "ranker-v1"
-DEFAULT_WEIGHTS = {
-    "coverage": 0.35,
-    "signer": 0.25,
-    "uncertainty": 0.40,
-}
+
+@dataclass(frozen=True)
+class RankerConfig:
+    """
+    Centralized ranker configuration containing thresholds, formula version, and default weights.
+    Can be directly imported and customized by simulation harnesses (Ruben) or live services.
+    """
+    formula_version: str = "ranker-v1"
+    w_coverage: float = 0.35
+    w_signer: float = 0.25
+    w_uncertainty: float = 0.40
+    default_target_samples: int = 10
+    default_target_signers: int = 3
+
+    @property
+    def weights(self) -> Dict[str, float]:
+        return {
+            "coverage": self.w_coverage,
+            "signer": self.w_signer,
+            "uncertainty": self.w_uncertainty,
+        }
+
+
+DEFAULT_RANKER_CONFIG = RankerConfig()
+FORMULA_VERSION = DEFAULT_RANKER_CONFIG.formula_version
+DEFAULT_WEIGHTS = DEFAULT_RANKER_CONFIG.weights
+DEFAULT_TARGET_SAMPLES = DEFAULT_RANKER_CONFIG.default_target_samples
+DEFAULT_TARGET_SIGNERS = DEFAULT_RANKER_CONFIG.default_target_signers
 
 
 def score_sign_class(
@@ -25,23 +49,28 @@ def score_sign_class(
     gloss: str,
     approved_count: int,
     distinct_signers: int,
-    target_samples: int = 10,
-    target_signers: int = 3,
+    target_samples: Optional[int] = None,
+    target_signers: Optional[int] = None,
     uncertainty: Optional[float] = None,
     weights: Optional[Dict[str, float]] = None,
+    config: Optional[RankerConfig] = None,
 ) -> Dict[str, Any]:
     """Pure ranker function computing priority and explanation for a single sign class."""
-    w = weights or DEFAULT_WEIGHTS
-    w_cov = w.get("coverage", 0.35)
-    w_sig = w.get("signer", 0.25)
-    w_unc = w.get("uncertainty", 0.40)
+    active_config = config or DEFAULT_RANKER_CONFIG
+    target_samples_val = target_samples if target_samples is not None else active_config.default_target_samples
+    target_signers_val = target_signers if target_signers is not None else active_config.default_target_signers
+
+    w = weights or active_config.weights
+    w_cov = w.get("coverage", active_config.w_coverage)
+    w_sig = w.get("signer", active_config.w_signer)
+    w_unc = w.get("uncertainty", active_config.w_uncertainty)
 
     # 1. Coverage gap (0.0 to 1.0)
-    target_s = max(1, target_samples)
+    target_s = max(1, target_samples_val)
     coverage_gap = max(0.0, min(1.0, 1.0 - (approved_count / target_s)))
 
     # 2. Signer diversity gap (0.0 to 1.0)
-    target_sg = max(1, target_signers)
+    target_sg = max(1, target_signers_val)
     signer_gap = max(0.0, min(1.0, 1.0 - (distinct_signers / target_sg)))
 
     # 3. Overall priority
@@ -65,19 +94,19 @@ def score_sign_class(
     signer_gap = round(signer_gap, 3)
 
     # 4. Suggested signer group
-    suggested_signer = "new_signer" if distinct_signers < target_signers else "any_consenting_signer"
+    suggested_signer = "new_signer" if distinct_signers < target_signers_val else "any_consenting_signer"
 
     # 5. Plain-language explanation
     reasons = []
     if coverage_gap > 0:
-        reasons.append(f"needs {max(0, target_samples - approved_count)} more approved samples ({approved_count}/{target_samples})")
+        reasons.append(f"needs {max(0, target_samples_val - approved_count)} more approved samples ({approved_count}/{target_samples_val})")
     else:
-        reasons.append(f"sample target met ({approved_count}/{target_samples})")
+        reasons.append(f"sample target met ({approved_count}/{target_samples_val})")
 
     if signer_gap > 0:
-        reasons.append(f"only {distinct_signers}/{target_signers} signers represented")
+        reasons.append(f"only {distinct_signers}/{target_signers_val} signers represented")
     else:
-        reasons.append(f"signer target met ({distinct_signers}/{target_signers})")
+        reasons.append(f"signer target met ({distinct_signers}/{target_signers_val})")
 
     if unc_val is not None:
         reasons.append(f"model uncertainty is {unc_display}")
@@ -87,6 +116,7 @@ def score_sign_class(
     reason_str = "; ".join(reasons) + "."
 
     return {
+        "sign": gloss,
         "sign_class_id": sign_class_id,
         "gloss": gloss,
         "priority": priority,
@@ -97,10 +127,10 @@ def score_sign_class(
         "suggested_signer": suggested_signer,
         "approved_sample_count": approved_count,
         "distinct_signer_count": distinct_signers,
-        "target_samples": target_samples,
-        "target_signers": target_signers,
+        "target_samples": target_samples_val,
+        "target_signers": target_signers_val,
         "reason": reason_str,
-        "formula_version": FORMULA_VERSION,
+        "formula_version": active_config.formula_version,
     }
 
 
@@ -128,17 +158,18 @@ def get_fake_queue(project_id: int = 1) -> List[Dict[str, Any]]:
                 uncertainty=unc,
             )
         )
-    items.sort(key=lambda x: (-x["priority"], x["gloss"]))
+    items.sort(key=lambda x: (-x["priority"], x["sign"]))
     return items
 
 
 def compute_active_learning_queue(
     db: Session,
     project_id: int,
-    target_samples: int = 10,
-    target_signers: int = 3,
+    target_samples: Optional[int] = None,
+    target_signers: Optional[int] = None,
     fake: bool = False,
     include_demo: bool = False,
+    config: Optional[RankerConfig] = None,
 ) -> List[Dict[str, Any]]:
     """
     Computes the prioritized queue of collection tasks.
@@ -198,7 +229,7 @@ def compute_active_learning_queue(
             )
         )
         if not include_demo:
-            query = query.where(Sample.source != "demo_fixture")
+            query = query.where(non_mock_sample_clause())
 
         signers_found = db.exec(query).all()
         approved_count = len(signers_found)
@@ -214,9 +245,10 @@ def compute_active_learning_queue(
             target_samples=target_samples,
             target_signers=target_signers,
             uncertainty=unc,
+            config=config,
         )
         queue.append(item)
 
-    # Sort descending by priority, breaking ties deterministically by gloss
-    queue.sort(key=lambda x: (-x["priority"], x["gloss"]))
+    # Sort descending by priority, breaking ties deterministically by sign
+    queue.sort(key=lambda x: (-x["priority"], x["sign"]))
     return queue
