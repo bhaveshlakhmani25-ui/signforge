@@ -121,7 +121,7 @@ export default function CorpusPage() {
             <div className="relative overflow-x-auto rounded-xl border border-lavender bg-white">
               <table className="w-full text-left text-sm">
                 <thead className="bg-navy text-white">
-                  <tr>{["#", "Sign", "Signer", "Source", "Frames", "Automated check", "Human review", "Split", "Created", ""].map((h) =>
+                  <tr>{["#", "Sign", "Signer", "Source", "Frames", "Automated check", "Model check", "Human review", "Split", "Created", ""].map((h) =>
                     <th key={h} scope="col" className="px-3 py-2 font-medium">{h || <span className="sr-only">Actions</span>}</th>)}</tr>
                 </thead>
                 <tbody>
@@ -138,6 +138,7 @@ export default function CorpusPage() {
                           <span className="text-xs"> · {(s.quality_score * 100).toFixed(0)}% complete</span>
                           {s.quality_flags.length > 0 && <ul className="mt-1 text-xs">{s.quality_flags.map((q) => <li key={q.code}>{q.severity === "error" ? "Problem" : "Warning"}: {q.code.replaceAll("_", " ")}</li>)}</ul>}
                         </td>
+                        <td className="px-3 py-2 text-xs"><ModelCheck s={s} /></td>
                         <td className="px-3 py-2"><Badge s={s.review_status} /></td>
                         <td className="px-3 py-2">{s.split}</td>
                         <td className="px-3 py-2 text-xs">{when(s.created_at)}</td>
@@ -166,6 +167,24 @@ export default function CorpusPage() {
         </section>
       )}
     </div>
+  );
+}
+
+const TRIAGE: Record<string, [string, string]> = {
+  auto_rejected: ["Auto-rejected", "bg-red-100 text-red-900"],
+  model_verified: ["Model-verified (not human-verified)", "bg-teal/15 text-teal"],
+  needs_review: ["Needs review", "bg-amber-100 text-amber-950"],
+};
+
+function ModelCheck({ s }: { s: Sample }) {
+  if (!s.triage_status) return <span className="text-indigo">Not scored</span>;
+  const [label, cls] = TRIAGE[s.triage_status];
+  return (
+    <>
+      <span className={`rounded-md px-2 py-0.5 ${cls}`}>{label}</span>
+      {s.match_confidence != null && <span className="mt-1 block">Matches the dataset at {(s.match_confidence * 100).toFixed(0)}%{s.predicted_sign && s.triage?.claimed_sign && s.predicted_sign !== s.triage.claimed_sign && `; looks like ${s.predicted_sign}`}</span>}
+      {s.audited && <span className="mt-1 block">Picked for audit</span>}
+    </>
   );
 }
 
@@ -220,6 +239,15 @@ function SampleDetail({ sample: s, onDone }: { sample: Sample; onDone: () => voi
         {s.quality_flags.length ? <ul className="list-disc pl-5 text-xs">{s.quality_flags.map((q) => <li key={q.code}><strong>{q.severity === "error" ? "Problem" : "Warning"}:</strong> {q.message}</li>)}</ul>
           : <p className="text-xs">The automated check found no issues. Human review is still needed.</p>}
         <p className="text-xs text-indigo">{Object.entries(s.qc_metrics).map(([k, v]) => `${k.replaceAll("_", " ")}: ${v}`).join(" · ")}</p>
+        {s.triage?.reason && (
+          <>
+            <h3 className="pt-2 font-semibold">Model check</h3>
+            <p className="text-xs">{s.triage.reason}</p>
+            {!!s.triage.top3?.length && <p className="text-xs">Closest signs: {s.triage.top3.map((t) => `${t.sign} ${(t.p * 100).toFixed(0)}%`).join(" · ")}</p>}
+            {s.triage.per_sign_test_recall && <p className="text-xs">On held-out test clips the model recognised {s.triage.claimed_sign} {s.triage.per_sign_test_recall.hits} of {s.triage.per_sign_test_recall.support} times.</p>}
+            {s.triage.calibration_note && <p className="text-xs text-indigo">{s.triage.calibration_note}</p>}
+          </>
+        )}
       </div>
 
       <div className="space-y-3">

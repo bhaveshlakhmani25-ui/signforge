@@ -15,6 +15,18 @@ export type Sample = {
   feature_schema_version: string; feature_sha256: string; raw_video_retained: boolean; provenance_note: string; created_at: string;
   dataset_name?: string; dataset_version?: string; dataset_license?: string; citation?: string;
   external_sample_id?: string; external_signer_id?: string; external_split?: string;
+  triage_status?: "" | TriageStatus; triage?: Partial<Triage>; match_confidence?: number | null; predicted_sign?: string;
+  is_near_duplicate?: boolean; audited?: boolean;
+};
+export type TriageStatus = "auto_rejected" | "model_verified" | "needs_review";
+// POST /api/predict (redesign F1/F2). A match score says how closely a clip matches the dataset, never that it is correct.
+export type Triage = {
+  sample_id: number; claimed_sign: string; status: TriageStatus; reason: string;
+  quality: { passed: boolean; failed_checks: string[] };
+  model: { run_id: number; project_id: number; pool: string; temperature: number; reliability_passed: boolean; signs: string[] } | null;
+  match_confidence: number | null; predicted_sign: string | null; top3: { sign: string; p: number }[];
+  per_sign_test_recall: { hits: number; support: number; recall: number } | null; calibration_note: string | null;
+  is_near_duplicate: boolean; nearest_same_sign_distance: number | null; audited: boolean; auto_accept_enabled: boolean;
 };
 export type ReviewEvent = { id: number; reviewer_code: string; reviewer_role: string; decision: string; note: string; created_at: string };
 export type Frame = { t: number; pose: number[][] | null; left_hand: number[][] | null; right_hand: number[][] | null };
