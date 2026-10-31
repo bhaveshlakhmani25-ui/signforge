@@ -165,3 +165,15 @@ def test_learn_signs_lists_known_signs_with_examples(env):
     probs = client.post("/api/interpret", json={"frames": d["frames"], "project_id": env["p"]}).json()["probs"]
     assert set(probs) == {"A", "B"} and abs(sum(probs.values()) - 1) < 0.01
     assert client.get("/api/learn/signs", params={"project_id": 999999}).status_code == 404
+
+
+def test_combined_pool_adds_approved_team_clips_and_keeps_the_frozen_test(env):
+    client = env["client"]
+    runs = {r["id"]: r for r in client.get("/api/models/runs", params={"project_id": env["p"]}).json()}
+    ext = runs[env["run_id"]]
+    clip = env["capture"]("A", 0, 980)
+    client.post(f"/api/samples/{clip['id']}/review", json={"decision": "approved", "reviewer_code": "R-01", "reviewer_role": "team_non_signer"}).raise_for_status()
+    run = client.post("/api/models/train-baseline", json={"project_id": env["p"], "pool": "combined"}).json()
+    assert run["status"] == "succeeded" and run["pool"] == "combined"
+    assert clip["id"] in run["train_sample_ids"]
+    assert sorted(run["test_sample_ids"]) == sorted(ext["test_sample_ids"]) and run["split_strategy"] == ext["split_strategy"]

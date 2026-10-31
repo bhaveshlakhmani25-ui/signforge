@@ -88,6 +88,9 @@ export default function ModelsPage() {
             <button className="rounded-lg border border-indigo px-3 py-2 text-sm text-indigo disabled:opacity-60" disabled={!data || !!training} onClick={() => train("external")}>
               {training === "external" ? "Training…" : "Train on external dataset"}
             </button>
+            <button className="rounded-lg border border-indigo px-3 py-2 text-sm text-indigo disabled:opacity-60" disabled={!data || !!training} onClick={() => train("combined")}>
+              {training === "combined" ? "Training…" : "Train on dataset + our approved clips"}
+            </button>
           </div>
           {trainError && <p role="alert" className="mt-2 text-sm text-red-900">Training didn&apos;t start. {trainError}</p>}
         </section>
@@ -111,6 +114,7 @@ export default function ModelsPage() {
               <span className="text-xs text-indigo">{when(r.created_at)} · {r.duration_s}s</span>
             </header>
             {r.pool === "external" && <p className="max-w-[58ch] text-xs">External dataset (labels come from the dataset, not from our reviewers). The test set holds out whole recording sessions per sign; signer identity is unknown, so these results are <strong>not</strong> signer-independent.</p>}
+            {r.pool === "combined" && <p className="max-w-[58ch] text-xs">External dataset plus this team&apos;s human-approved, consented clips (from Capture and Learn). Tested on the dataset&apos;s same frozen test set, so it shows whether adding our clips kept dataset accuracy; it does <strong>not</strong> measure accuracy on our own signing.</p>}
             {r.pool === "demo" && <p className="text-xs text-amber-900">Synthetic DEMO DATA: these numbers only show the pipeline works. They say nothing about real {data.project.target_language} performance.</p>}
             {r.status === "failed" && <p className="text-sm text-red-900">{r.failure_detail}</p>}
             {r.status === "succeeded" && (

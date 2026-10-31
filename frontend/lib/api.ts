@@ -86,7 +86,7 @@ export const when = (iso: string) => new Date(/Z|[+-]\d\d:\d\d$/.test(iso) ? iso
 
 export type ClassMetrics = { precision: number; recall: number; f1: number; support: number };
 export type ModelRun = {
-  id: number; model_kind: "baseline" | "transfer"; pool: "real" | "demo" | "external"; status: "running" | "succeeded" | "failed";
+  id: number; model_kind: "baseline" | "transfer"; pool: "real" | "demo" | "external" | "combined"; status: "running" | "succeeded" | "failed";
   failure_detail: string; checkpoint_reference: string; feature_schema_version: string; preprocessing: Record<string, string | number>;
   data_version: string; split_strategy: string; train_sample_ids: number[]; test_sample_ids: number[]; seed: number;
   config: Record<string, string | number>; duration_s: number; created_at: string;

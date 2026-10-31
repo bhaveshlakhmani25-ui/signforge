@@ -34,13 +34,16 @@ router = APIRouter(prefix="/api/models")
 
 class TrainIn(BaseModel):
     project_id: int
-    pool: Literal["real", "demo", "external"] = "real"
+    pool: Literal["real", "demo", "external", "combined"] = "real"
 
 
 def eligible_samples(session: Session, project_id: int, pool: str) -> list[Sample]:
     """Real pool: human-approved, QC-passed captures whose signer allowed model training (mock data excluded).
     Demo pool: QC-passed DEMO DATA not rejected/sent back by a reviewer.
-    External pool: QC-passed external-dataset clips (labels from the dataset, not reviewed by us) not rejected/sent back."""
+    External pool: QC-passed external-dataset clips (labels from the dataset, not reviewed by us) not rejected/sent back.
+    Combined pool: external + real, so the model also learns how this team signs (Learn page and Capture clips)."""
+    if pool == "combined":
+        return sorted(eligible_samples(session, project_id, "external") + eligible_samples(session, project_id, "real"), key=lambda s: s.id)
     q = select(Sample).where(Sample.project_id == project_id, Sample.qc_passed == True)  # noqa: E712
     if pool == "external":  # the dataset's licence is recorded as its consent: withdrawing it stops training too
         q = (select(Sample, ConsentRecord).join(ConsentRecord, Sample.consent_id == ConsentRecord.id)
@@ -84,13 +87,13 @@ def train_baseline_endpoint(body: TrainIn, session: Session = Depends(get_sessio
         raise HTTPException(422, f"Not enough data to train yet: {found}, and at least 2 signs are needed. A real sample is usable once it passes the automated check, "
                                  "is approved in human review, and its signer allowed model training.")
 
-    split_fn = assign_grouped_splits if body.pool == "external" else assign_splits
+    split_fn = assign_grouped_splits if body.pool in ("external", "combined") else assign_splits  # combined keeps the dataset's frozen test set
     changes, strategy = split_fn([s.model_dump() for s in samples])
     for s in samples:
         s.split = changes.get(s.id, s.split)
         session.add(s)
     if strategy is None:  # test set was frozen by an earlier run of this pool
-        prev = session.exec(select(ModelRun).where(ModelRun.project_id == body.project_id, ModelRun.pool == body.pool,
+        prev = session.exec(select(ModelRun).where(ModelRun.project_id == body.project_id, ModelRun.pool.in_(["external", "combined"] if body.pool in ("external", "combined") else [body.pool]),
                                                    ModelRun.split_strategy != "").order_by(ModelRun.id)).first()
         strategy = prev.split_strategy if prev else "frozen test set"
     train = [s for s in samples if s.split == "train"]
