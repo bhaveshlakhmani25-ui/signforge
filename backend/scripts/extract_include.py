@@ -62,7 +62,7 @@ if __name__ == "__main__":
         if not d.is_dir():
             continue
         gloss = re.sub(r"[^A-Z0-9]+", "-", re.sub(r"^\d+\.\s*", "", d.name).upper()).strip("-")  # "you (plural)" -> YOU-PLURAL
-        for f in sorted(d.glob("*.MOV"))[: a.limit]:
+        for f in sorted(f for f in d.iterdir() if f.suffix.lower() in (".mov", ".mp4"))[: a.limit]:  # People has some .MP4 clips
             rel = f"features/{d.name.split('.')[0]}_{f.stem}.npz"
             jobs.append((f, out / rel)); meta.append((gloss, f.stem, rel))
     with Pool(a.jobs) as pool:

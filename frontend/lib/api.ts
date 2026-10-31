@@ -81,7 +81,7 @@ async function fromSnapshot<T>(path: string, method: string, body?: unknown): Pr
       [loadBundle(), import("./localInterpret.ts"), import("./localCorpus.ts"), import("./headTraining.ts")]);
     const req = body as { frames: InFrame[]; project_id?: number | null };
     const pid = req.project_id ?? Number(Object.entries(b.models).find(([, m]) => m === referenceModel(b, null))?.[0]);
-    const { head } = await activeHead(pid); // an output layer this visitor retrained, if any
+    const { head } = await activeHead(pid, b.models[pid]?.run_id); // an output layer this visitor retrained, if any
     const use = head ? { ...b, models: { ...b.models, [pid]: withHead(b.models[pid], head) } } : b;
     return { ...interpretLocally(use, req.frames, pid), retrained: !!head } as T;
   }

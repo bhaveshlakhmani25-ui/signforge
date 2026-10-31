@@ -170,7 +170,7 @@ const pc = (v: number | null) => (v == null ? "—" : `${(v * 100).toFixed(1)}%`
 
 async function retrainState(projectId: number) {
   const [{ trainingClips, activeHead }, bundle] = await Promise.all([import("@/lib/localCorpus"), loadModelBundle()]);
-  const [{ counts, clips, added }, { head, dropped }] = await Promise.all([trainingClips(projectId), activeHead(projectId)]);
+  const [{ counts, clips, added }, { head, dropped }] = await Promise.all([trainingClips(projectId), activeHead(projectId, bundle.models[String(projectId)]?.run_id)]);
   const newSigns = added.map((a) => ({ gloss: a.gloss, clips: clips.filter((c) => c.sign_class_id === a.id).length }));
   return { counts, newSigns, head, dropped, hasModel: String(projectId) in bundle.models };
 }
@@ -225,7 +225,7 @@ function BrowserRetrain({ projectId }: { projectId: number }) {
               <p className="mt-2 text-sm">Signs you added: {state.newSigns.map((n) => `${n.gloss} (${n.clips} usable clip${n.clips === 1 ? "" : "s"})`).join(", ")}.
                 {" "}A new sign is learned once it has at least {MIN_NEW_SIGN_CLIPS} usable clips.</p>
             )}
-            {state.dropped && <p className="mt-2 text-sm text-amber-900">Your earlier retrained layer was removed: a clip it learned from was deleted, rejected or lost its training consent.</p>}
+            {state.dropped && <p className="mt-2 text-sm text-amber-900">Your earlier retrained layer was removed: a clip it learned from was deleted, rejected or lost its training consent, or the site now ships a newer model. Retrain to build a new one.</p>}
             <div className="mt-3 flex flex-wrap gap-2">
               <button className="rounded-lg bg-indigo px-3 py-2 text-sm text-white disabled:opacity-60" disabled={busy} onClick={retrain}>
                 {busy ? "Training…" : c.eligible ? `Retrain with ${c.eligible} of your clips` : "Retrain on the dataset only"}</button>

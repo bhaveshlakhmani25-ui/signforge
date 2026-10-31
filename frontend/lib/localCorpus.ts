@@ -273,14 +273,16 @@ export async function trainingClips(projectId: number) {
 }
 
 // A retrained output layer, kept per project on this device. It is dropped as soon as any clip it learned from is
-// deleted, rejected, or loses its training consent, matching what withdrawal means everywhere else.
+// deleted, rejected, or loses its training consent (matching what withdrawal means everywhere else), or when the site
+// ships a newer model, whose GRU features the old layer was never trained on.
 const HEAD_KEY = (projectId: number) => `signforge.head.${projectId}`;
 export function saveHead(head: TrainedHead) { localStorage.setItem(HEAD_KEY(head.project_id), JSON.stringify(head)); }
 export function clearHead(projectId: number) { try { localStorage.removeItem(HEAD_KEY(projectId)); } catch { /* storage blocked */ } }
-export async function activeHead(projectId: number): Promise<{ head: TrainedHead | null; dropped: boolean }> {
+export async function activeHead(projectId: number, runId: number): Promise<{ head: TrainedHead | null; dropped: boolean }> {
   let head: TrainedHead | null = null;
   try { head = JSON.parse(localStorage.getItem(HEAD_KEY(projectId)) ?? "null"); } catch { return { head: null, dropped: false } }
   if (!head) return { head: null, dropped: false };
+  if (head.base_run_id !== runId) { clearHead(projectId); return { head: null, dropped: true }; } // trained on an older model's features
   const ok = new Set((await trainingClips(projectId)).clips.map((c) => c.id));
   if (head.user_sample_ids.every((id) => ok.has(id))) return { head, dropped: false };
   clearHead(projectId);

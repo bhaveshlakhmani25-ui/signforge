@@ -22,7 +22,8 @@ MODEL_FRAMES = 30
 assert MODEL_FRAMES % 10 == 0, "OpenHands DPC reads clips in windows of 10 frames"
 SEED = 0
 # Chosen on the INCLUDE val split (3 seeds): 80 epochs underfit (train acc 0.65). Never tuned on a test split.
-BASELINE = {"hidden": 128, "epochs": 300, "lr": 3e-3, "weight_decay": 1e-4}
+# augment + dropout chosen on validation only (scripts/tune_baseline.py): run #6 splits 0.56 -> 0.76, run #5 0.10 -> 0.23 val acc
+BASELINE = {"hidden": 128, "epochs": 300, "lr": 3e-3, "weight_decay": 1e-4, "augment": True, "dropout": 0.3}
 TEST_FRACTION = 0.2  # random clip split only; signer-independent splits hold out whole signers
 MIN_SIGNERS_FOR_SIGNER_SPLIT = 3
 # External datasets (no signer IDs): whole recording-session groups held out per sign, see splits.assign_grouped_splits.
