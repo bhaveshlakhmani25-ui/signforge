@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { api, currentProject, type Consent, type Frame, type Project, type Sample, type SignClass, type Signer, when } from "@/lib/api";
 import { EXTRACTOR, extractFromVideo, loadHolistic, trackVideo } from "@/lib/holistic";
 import { drawSkeleton, EMPTY, smooth } from "@/lib/skeleton";
+import CameraModes from "@/components/CameraModes";
 import { card, DemoBadge, ErrorBanner } from "@/components/ui";
 
 const MAX_RECORD_SECONDS = 5;
@@ -239,7 +240,8 @@ export default function CapturePage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold">Capture a consented sample</h1>
+        <CameraModes active="collect" />
+        <h1 className="mt-4 text-[clamp(2rem,3.6vw,2.8rem)] font-semibold leading-none">Capture a consented sample</h1>
         <p className="mt-1 text-sm">The camera turns on only when you press Start camera. Landmarks are extracted in this browser and the raw video is never uploaded.</p>
       </header>
       {error && <ErrorBanner message={error}

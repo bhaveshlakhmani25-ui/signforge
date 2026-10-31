@@ -118,3 +118,20 @@ def test_predict_endpoint_and_status_precedence(env):
     with Session(engine) as session:
         from app.db.models import Sample
         assert triage.status_of(session.get(Sample, s["id"])) == "human_verified"  # a human decision always wins
+
+
+def test_interpret_reads_a_window_without_storing_it(env):
+    client = env["client"]
+    d = client.get("/api/demo-frames", params={"class_index": 1, "seed": 950}).json()
+    before = len(client.get("/api/samples", params={"project_id": env["p"]}).json())
+    r = client.post("/api/interpret", json={"frames": d["frames"]}).json()
+    assert r["state"] in ("sign", "unsure") and set(r["vocabulary"]) == {"A", "B"} and r["top3"]
+    if r["state"] == "sign":
+        assert r["sign"] == "B"
+    assert len(client.get("/api/samples", params={"project_id": env["p"]}).json()) == before  # nothing stored
+
+    still = [dict(d["frames"][10], t=i / 30) for i in range(60)]
+    assert client.post("/api/interpret", json={"frames": still}).json()["state"] == "still"
+    no_hands = [dict(f, left_hand=None, right_hand=None) for f in d["frames"]]
+    assert client.post("/api/interpret", json={"frames": no_hands}).json()["state"] == "no_hands"
+    assert client.post("/api/interpret", json={"frames": d["frames"][:3]}).json()["state"] == "waiting"

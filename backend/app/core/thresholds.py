@@ -22,3 +22,8 @@ DUP_EPSILON = 0.05
 # Step 3 calibration
 CALIBRATION_BINS = 5     # few clips: more bins would leave most bins nearly empty
 RELIABILITY_MAX_ECE = 0.10  # calibrated test-set ECE at or below this counts as a passed reliability check
+
+# Live interpreter (Capture > Interpret). MVP heuristics, not calibrated on live signing.
+INTERPRET_MIN_CONF = 0.55     # below this the interpreter says "not sure" instead of naming a sign
+INTERPRET_MIN_HAND_SHARE = 0.3  # share of window frames with a hand in view before anything is read
+INTERPRET_MIN_MOTION = 0.02   # mean wrist travel (normalised image units) below this counts as "hands still"

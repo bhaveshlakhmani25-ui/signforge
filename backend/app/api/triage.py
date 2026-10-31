@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
 from app.api.projects import get_or_404
 from app.db import get_session
 from app.db.models import Project, Sample
+from app.schemas import Frame
+from app.services import interpret as interpreter
 from app.services import triage
 
 router = APIRouter(prefix="/api")
@@ -37,3 +39,13 @@ def rerun(project_id: int, session: Session = Depends(get_session)):
         counts[st] = counts.get(st, 0) + 1
     session.commit()
     return {"retriaged": len(rows), "by_status": counts}
+
+
+class InterpretIn(BaseModel):
+    frames: list[Frame] = Field(max_length=300)  # about 10 s at 30 fps; the client sends ~2.5 s
+
+
+@router.post("/interpret")
+def interpret(body: InterpretIn, session: Session = Depends(get_session)):
+    """Live interpretation of a short landmark window. Not stored, not linked to any signer."""
+    return interpreter.interpret(session, [f.model_dump() for f in body.frames])
