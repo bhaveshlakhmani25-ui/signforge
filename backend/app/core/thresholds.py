@@ -11,7 +11,13 @@ MIN_VAL_CLIPS = 3        # fewer validation clips than this per sign -> status "
 VERIFY_MIN_CONF = 0.70   # calibrated confidence needed to auto-accept as model_verified
 AUDIT_RATE = 0.15        # share of model_verified clips still sent to a human reviewer
 VERIFY_MARGIN = 0.05     # confidence this close to VERIFY_MIN_CONF goes to review: the extractor alone moves it ~0.04 (docs/EXTRACTOR_COMPARISON.md)
-# DUP_EPSILON is added in step 4, set from measured same-sign nearest-neighbour distances, not guessed.
+# Auto-accept is OFF (team decision, 31 Oct 2026): the INCLUDE model failed its reliability check (test ECE 0.20 > 0.10).
+# Even when switched on, model_verified also requires the reference run's reliability check to have passed.
+MODEL_VERIFY_ENABLED = False
+# Near-duplicate: mean |model input| distance to the nearest same-sign clip. Measured on INCLUDE Greetings: genuinely
+# different takes come as close as 0.067, and the SAME video re-extracted differs by ~0.126, so distance cannot catch a
+# re-uploaded video. 0.05 only flags near-identical landmark data (exact copies are already caught by the hash check).
+DUP_EPSILON = 0.05
 
 # Step 3 calibration
 CALIBRATION_BINS = 5     # few clips: more bins would leave most bins nearly empty

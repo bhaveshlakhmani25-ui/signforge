@@ -10,6 +10,7 @@ from app.db.models import ConsentRecord, ReviewEvent, Sample, SignClass, Signer
 from app.schemas import CaptureIn, ReviewIn
 from app.services.landmark_schema import FEATURE_SCHEMA_VERSION
 from app.services import landmark_schema as S
+from app.services import triage
 from app.services.preprocessing import frames_to_arrays, resample
 from app.services.quality_checks import run_qc
 from app.services.storage import load_features, save_features
@@ -64,6 +65,9 @@ def capture(body: CaptureIn, session: Session = Depends(get_session)):
     session.flush()  # assign id; nothing is committed unless the feature file is written
     sample.feature_path = save_features(body.project_id, sample.id, points, present, t)
     session.commit()
+    if sample.source == "captured":  # external clips may be the model's own training data; DEMO DATA is synthetic
+        triage.apply(session, sample)
+        session.commit()
     session.refresh(sample)
     return sample
 
