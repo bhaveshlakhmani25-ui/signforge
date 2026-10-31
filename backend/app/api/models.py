@@ -3,7 +3,14 @@ import time
 from typing import Literal
 
 import numpy as np
-import torch
+try:
+    import torch
+    from app.services.baseline_model import predict_proba, train_baseline
+except ImportError:
+    torch = None
+    predict_proba = None
+    train_baseline = None
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlmodel import Session, select
@@ -12,7 +19,6 @@ from app.api.projects import get_or_404, save
 from app.core import config as C
 from app.db import get_session
 from app.db.models import ConsentRecord, ModelRun, Project, Sample, SignClass
-from app.services.baseline_model import predict_proba, train_baseline
 from app.services.evaluation import classification_metrics
 from app.services.landmark_schema import FEATURE_SCHEMA_VERSION
 from app.services.preprocessing import model_input
@@ -43,6 +49,8 @@ def eligible_samples(session: Session, project_id: int, pool: str) -> list[Sampl
 
 @router.post("/train-baseline", status_code=201)
 def train_baseline_endpoint(body: TrainIn, session: Session = Depends(get_session)):
+    if torch is None or train_baseline is None:
+        raise HTTPException(503, "PyTorch is still installing in the background; baseline training will be available once installation finishes.")
     get_or_404(session, Project, body.project_id)
     samples = eligible_samples(session, body.project_id, body.pool)
     if len({s.sign_class_id for s in samples}) < 2:

@@ -13,6 +13,10 @@ def save_features(project_id: int, sample_id: int, points: np.ndarray, present: 
     return str(path)
 
 
+def delete_features(path: str) -> None:
+    Path(path).unlink(missing_ok=True)  # already gone is fine: deletion must be repeatable
+
+
 def load_features(path: str) -> dict[str, np.ndarray]:
     with np.load(path) as f:
         return {k: f[k] for k in f.files}

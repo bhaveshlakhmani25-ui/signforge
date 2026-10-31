@@ -82,3 +82,7 @@ class ReviewIn(BaseModel):
     reviewer_role: REVIEWER_ROLES
     decision: Literal["approved", "rejected", "needs_recapture"]
     note: str = Field(default="", max_length=1000)
+
+
+class WithdrawIn(BaseModel):
+    delete_samples: bool  # explicit: withdrawing stops future use, deleting also erases the stored landmarks

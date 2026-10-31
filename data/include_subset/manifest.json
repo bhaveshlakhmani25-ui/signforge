@@ -1,0 +1,210 @@
+{
+  "dataset_name": "INCLUDE (Subset)",
+  "source": "AI4Bharat / Zenodo 4010759",
+  "license": "CC-BY-4.0",
+  "schema_version": "mp-holistic-75-xyz-v1",
+  "n_samples": 20,
+  "n_classes": 10,
+  "samples": [
+    {
+      "signer_id": "INCLUDE-S01",
+      "gloss": "HELLO",
+      "landmark_file": "landmarks/include_hello_01.npz",
+      "fps": 10,
+      "width": 1280,
+      "height": 720,
+      "num_frames": 30,
+      "qc_passed": true
+    },
+    {
+      "signer_id": "INCLUDE-S02",
+      "gloss": "HELLO",
+      "landmark_file": "landmarks/include_hello_02.npz",
+      "fps": 10,
+      "width": 1280,
+      "height": 720,
+      "num_frames": 30,
+      "qc_passed": true
+    },
+    {
+      "signer_id": "INCLUDE-S01",
+      "gloss": "THANK-YOU",
+      "landmark_file": "landmarks/include_thank-you_01.npz",
+      "fps": 10,
+      "width": 1280,
+      "height": 720,
+      "num_frames": 30,
+      "qc_passed": true
+    },
+    {
+      "signer_id": "INCLUDE-S02",
+      "gloss": "THANK-YOU",
+      "landmark_file": "landmarks/include_thank-you_02.npz",
+      "fps": 10,
+      "width": 1280,
+      "height": 720,
+      "num_frames": 30,
+      "qc_passed": true
+    },
+    {
+      "signer_id": "INCLUDE-S01",
+      "gloss": "HELP",
+      "landmark_file": "landmarks/include_help_01.npz",
+      "fps": 10,
+      "width": 1280,
+      "height": 720,
+      "num_frames": 30,
+      "qc_passed": true
+    },
+    {
+      "signer_id": "INCLUDE-S02",
+      "gloss": "HELP",
+      "landmark_file": "landmarks/include_help_02.npz",
+      "fps": 10,
+      "width": 1280,
+      "height": 720,
+      "num_frames": 30,
+      "qc_passed": true
+    },
+    {
+      "signer_id": "INCLUDE-S01",
+      "gloss": "EMERGENCY",
+      "landmark_file": "landmarks/include_emergency_01.npz",
+      "fps": 10,
+      "width": 1280,
+      "height": 720,
+      "num_frames": 30,
+      "qc_passed": true
+    },
+    {
+      "signer_id": "INCLUDE-S02",
+      "gloss": "EMERGENCY",
+      "landmark_file": "landmarks/include_emergency_02.npz",
+      "fps": 10,
+      "width": 1280,
+      "height": 720,
+      "num_frames": 30,
+      "qc_passed": true
+    },
+    {
+      "signer_id": "INCLUDE-S01",
+      "gloss": "DOCTOR",
+      "landmark_file": "landmarks/include_doctor_01.npz",
+      "fps": 10,
+      "width": 1280,
+      "height": 720,
+      "num_frames": 30,
+      "qc_passed": true
+    },
+    {
+      "signer_id": "INCLUDE-S02",
+      "gloss": "DOCTOR",
+      "landmark_file": "landmarks/include_doctor_02.npz",
+      "fps": 10,
+      "width": 1280,
+      "height": 720,
+      "num_frames": 30,
+      "qc_passed": true
+    },
+    {
+      "signer_id": "INCLUDE-S01",
+      "gloss": "WATER",
+      "landmark_file": "landmarks/include_water_01.npz",
+      "fps": 10,
+      "width": 1280,
+      "height": 720,
+      "num_frames": 30,
+      "qc_passed": true
+    },
+    {
+      "signer_id": "INCLUDE-S02",
+      "gloss": "WATER",
+      "landmark_file": "landmarks/include_water_02.npz",
+      "fps": 10,
+      "width": 1280,
+      "height": 720,
+      "num_frames": 30,
+      "qc_passed": true
+    },
+    {
+      "signer_id": "INCLUDE-S01",
+      "gloss": "FOOD",
+      "landmark_file": "landmarks/include_food_01.npz",
+      "fps": 10,
+      "width": 1280,
+      "height": 720,
+      "num_frames": 30,
+      "qc_passed": true
+    },
+    {
+      "signer_id": "INCLUDE-S02",
+      "gloss": "FOOD",
+      "landmark_file": "landmarks/include_food_02.npz",
+      "fps": 10,
+      "width": 1280,
+      "height": 720,
+      "num_frames": 30,
+      "qc_passed": true
+    },
+    {
+      "signer_id": "INCLUDE-S01",
+      "gloss": "PAIN",
+      "landmark_file": "landmarks/include_pain_01.npz",
+      "fps": 10,
+      "width": 1280,
+      "height": 720,
+      "num_frames": 30,
+      "qc_passed": true
+    },
+    {
+      "signer_id": "INCLUDE-S02",
+      "gloss": "PAIN",
+      "landmark_file": "landmarks/include_pain_02.npz",
+      "fps": 10,
+      "width": 1280,
+      "height": 720,
+      "num_frames": 30,
+      "qc_passed": true
+    },
+    {
+      "signer_id": "INCLUDE-S01",
+      "gloss": "YES",
+      "landmark_file": "landmarks/include_yes_01.npz",
+      "fps": 10,
+      "width": 1280,
+      "height": 720,
+      "num_frames": 30,
+      "qc_passed": true
+    },
+    {
+      "signer_id": "INCLUDE-S02",
+      "gloss": "YES",
+      "landmark_file": "landmarks/include_yes_02.npz",
+      "fps": 10,
+      "width": 1280,
+      "height": 720,
+      "num_frames": 30,
+      "qc_passed": true
+    },
+    {
+      "signer_id": "INCLUDE-S01",
+      "gloss": "NO",
+      "landmark_file": "landmarks/include_no_01.npz",
+      "fps": 10,
+      "width": 1280,
+      "height": 720,
+      "num_frames": 30,
+      "qc_passed": true
+    },
+    {
+      "signer_id": "INCLUDE-S02",
+      "gloss": "NO",
+      "landmark_file": "landmarks/include_no_02.npz",
+      "fps": 10,
+      "width": 1280,
+      "height": 720,
+      "num_frames": 30,
+      "qc_passed": true
+    }
+  ]
+}
