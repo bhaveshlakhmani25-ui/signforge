@@ -117,13 +117,13 @@ export default function Landing() {
         </section>
 
         {/* Live readings, on silver-gelatin print stock. */}
-        <section id="readings" aria-labelledby="readings-h" className="scroll-mt-16 border-t border-[#efeee9]/15">
+        <section id="readings" aria-labelledby="readings-h" className="scroll-mt-16 bg-[#d6d5cf] text-[#0c0c0b]">
           <div className="mx-auto max-w-[1200px] px-5 py-20 md:px-10 md:py-24">
             <div className="flex flex-wrap items-baseline justify-between gap-4">
               <h2 id="readings-h" className="f-display text-[clamp(2.2rem,4.4vw,3.8rem)] font-semibold leading-none">The readings</h2>
-              <p className="f-mono text-sm uppercase tracking-[0.1em] text-[#efeee9]/70">{offline ? "Backend offline" : r ? "Live from the app" : "Reading…"}</p>
+              <p className="f-mono text-sm uppercase tracking-[0.1em] text-[#0c0c0b]/70">{offline ? "Backend offline" : r ? "Live from the app" : "Reading…"}</p>
             </div>
-            <ol className="mt-10 border-t border-[#efeee9]/50">
+            <ol className="mt-10 border-t-2 border-[#0c0c0b]">
               <Reading q="Is this clip good?" built="Consent, in-browser landmarks and an automated check that explains every failure."
                        value={r ? `${r.recorded} recorded` : pending}
                        note={r ? `plus ${r.imported} imported from INCLUDE` : undefined} state="Running" />
@@ -166,12 +166,12 @@ export default function Landing() {
         </section>
 
         {/* Findings, failures included. */}
-        <section id="evidence" aria-labelledby="evidence-h" className="scroll-mt-16 border-t border-[#efeee9]/15">
+        <section id="evidence" aria-labelledby="evidence-h" className="scroll-mt-16 bg-[#d6d5cf] text-[#0c0c0b]">
           <div className="mx-auto max-w-[1200px] px-5 py-24 md:px-10">
             <h2 id="evidence-h" className="f-display max-w-[16ch] text-[clamp(2.4rem,4.4vw,3.8rem)] font-semibold leading-[1.02] [text-wrap:balance]">
               What we measured, including what did not work.
             </h2>
-            <dl className="mt-12 border-t border-[#efeee9]/50">
+            <dl className="mt-12 border-t-2 border-[#0c0c0b]">
               <Finding title="Accuracy on unseen recording sessions" value={run?.metrics.accuracy != null ? pct(run.metrics.accuracy) : offline ? "Offline" : "—"}
                        body={run ? `${run.metrics.n_test} INCLUDE clips the model never saw. INCLUDE has no signer IDs, so this is not a signer-independent result.` : missing}
                        source={run ? `Live · run #${run.id}` : "Live"} />
@@ -244,16 +244,16 @@ export default function Landing() {
 
 function Reading({ q, built, value, note, state, warn }: { q: string; built: string; value: string; note?: string; state: string; warn?: boolean }) {
   return (
-    <li className="grid gap-4 border-b border-[#efeee9]/15 py-8 md:grid-cols-[1.3fr_1fr] md:gap-12">
+    <li className="grid gap-4 border-b border-[#0c0c0b]/25 py-8 md:grid-cols-[1.3fr_1fr] md:gap-12">
       <div>
         <h3 className="f-display text-[clamp(1.7rem,2.4vw,2.1rem)] font-semibold leading-tight">{q}</h3>
-        <p className="mt-2 max-w-[44ch] text-[1.12rem] leading-relaxed text-[#efeee9]/80">{built}</p>
+        <p className="mt-2 max-w-[44ch] text-[1.12rem] leading-relaxed text-[#0c0c0b]/80">{built}</p>
       </div>
       <div className="md:text-right">
         <p className="f-display text-[clamp(2.2rem,3.6vw,3.2rem)] font-semibold leading-none tabular-nums">{value}</p>
-        {note && <p className="mt-2 text-[1.05rem] text-[#efeee9]/70">{note}</p>}
-        <p className={`f-mono mt-3 text-sm uppercase tracking-[0.08em] ${warn ? "text-[#f2a33a]" : "text-[#efeee9]/75"}`}>
-          <span aria-hidden className={`mr-2 inline-block size-2 rounded-full align-middle ${warn ? "bg-[#f2a33a]" : "bg-[#efeee9]"}`} />{state}
+        {note && <p className="mt-2 text-[1.05rem] text-[#0c0c0b]/70">{note}</p>}
+        <p className={`f-mono mt-3 text-sm uppercase tracking-[0.08em] ${warn ? "text-[#8a4100]" : "text-[#0c0c0b]/75"}`}>
+          <span aria-hidden className={`mr-2 inline-block size-2 rounded-full align-middle ${warn ? "bg-[#c66a00]" : "bg-[#0c0c0b]"}`} />{state}
         </p>
       </div>
     </li>
@@ -262,14 +262,14 @@ function Reading({ q, built, value, note, state, warn }: { q: string; built: str
 
 function Finding({ title, value, body, source, warn }: { title: string; value: string; body: string; source: string; warn?: boolean }) {
   return (
-    <div className="grid gap-4 border-b border-[#efeee9]/15 py-9 md:grid-cols-[1fr_1.3fr] md:gap-12">
+    <div className="grid gap-4 border-b border-[#0c0c0b]/25 py-9 md:grid-cols-[1fr_1.3fr] md:gap-12">
       <div>
         <dt className="text-[1.15rem] font-semibold">{title}</dt>
-        <dd className={`f-display mt-2 text-[clamp(2.2rem,3.6vw,3rem)] font-semibold leading-none tabular-nums ${warn ? "text-[#f2a33a]" : ""}`}>{value}</dd>
+        <dd className={`f-display mt-2 text-[clamp(2.2rem,3.6vw,3rem)] font-semibold leading-none tabular-nums ${warn ? "text-[#8a4100]" : ""}`}>{value}</dd>
       </div>
       <dd>
         <p className="max-w-[52ch] text-[1.12rem] leading-relaxed">{body}</p>
-        <p className="f-mono mt-3 text-sm text-[#efeee9]/65">{source}</p>
+        <p className="f-mono mt-3 text-sm text-[#0c0c0b]/65">{source}</p>
       </dd>
     </div>
   );
