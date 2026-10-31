@@ -1,4 +1,5 @@
 import hashlib
+import os
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -37,14 +38,28 @@ def capture(body: CaptureIn, session: Session = Depends(get_session)):
         qc["flags"].append({"code": "duplicate", "severity": "error",
                             "message": f"Identical landmarks already stored as sample #{dup}."})
         qc["passed"] = False
+
+    if body.source == "demo_fixture":
+        prov_note = "DEMO DATA: synthetic, not real signing"
+    elif body.source in ("external_dataset", "public_dataset"):
+        prov_note = f"External: {body.dataset_name} ({body.dataset_license}) - {body.citation}".strip()
+    else:
+        prov_note = "Captured in SIGNFORGE; landmarks only, raw video never uploaded"
+
     sample = Sample(
         project_id=body.project_id, sign_class_id=sign_class.id, signer_id=signer.id, consent_id=consent.id,
         source=body.source, feature_schema_version=FEATURE_SCHEMA_VERSION, extractor=body.extractor,
         extractor_model_sha=body.extractor_model_sha, fps=body.fps, width=body.width, height=body.height,
         frame_count=len(t), quality_score=qc["completeness"], qc_passed=qc["passed"], quality_flags=qc["flags"],
         qc_metrics=qc["metrics"], feature_sha256=sha,
-        provenance_note="DEMO DATA: synthetic, not real signing" if body.source == "demo_fixture"
-        else "Captured in SIGNFORGE; landmarks only, raw video never uploaded",
+        provenance_note=prov_note,
+        dataset_name=body.dataset_name,
+        dataset_version=body.dataset_version,
+        dataset_license=body.dataset_license,
+        citation=body.citation,
+        external_sample_id=body.external_sample_id,
+        external_signer_id=body.external_signer_id,
+        external_split=body.external_split,
     )
     session.add(sample)
     session.flush()  # assign id; nothing is committed unless the feature file is written
@@ -97,3 +112,24 @@ def review(sample_id: int, body: ReviewIn, session: Session = Depends(get_sessio
     session.add(ReviewEvent(sample_id=sample_id, **body.model_dump()))
     sample.review_status = body.decision
     return save(session, sample)
+
+
+@router.delete("/{sample_id}")
+def delete_sample(sample_id: int, session: Session = Depends(get_session)):
+    """Deletes a sample and its stored landmark features from disk."""
+    sample = get_or_404(session, Sample, sample_id)
+    if sample.feature_path and os.path.exists(sample.feature_path):
+        try:
+            os.remove(sample.feature_path)
+        except OSError:
+            pass
+
+    # Remove review events
+    reviews = session.exec(select(ReviewEvent).where(ReviewEvent.sample_id == sample_id)).all()
+    for rev in reviews:
+        session.delete(rev)
+
+    session.delete(sample)
+    session.commit()
+    return {"deleted": True, "sample_id": sample_id}
+
