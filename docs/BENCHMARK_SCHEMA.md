@@ -75,8 +75,8 @@ This document defines the versioned JSON contract for benchmark artifacts genera
 | `strategies` | `array of string` | **Yes** | No | `["signforge", "round_robin", "random"]`. |
 | `seeds` | `array of integer` | **Yes** | No | Evaluation seeds executed (e.g. `[42, 43, 44, 45, 46]`). |
 | `initial_samples_per_class` | `integer` | **Yes** | No | Starting labeled count $N_0$ per sign in $\mathcal{D}_0$ (e.g. `2`). |
-| `num_rounds` | `integer` | **Yes** | No | Number of acquisition rounds $R$ (e.g. `5`). |
-| `batch_size_per_round` | `integer` | **Yes** | No | Total newly acquired samples $B$ per round across all classes (e.g. `10`). |
+| `num_rounds` | `integer` | **Yes** | No | Number of acquisition rounds $R$ (e.g. `25`). |
+| `batch_size_per_round` | `integer` | **Yes** | No | Total newly acquired samples $B$ per round across all classes (e.g. `2`). |
 | `uncertainty_proxy` | `object` | **Yes** | No | Validation-fold error estimation configuration. |
 
 #### `protocol.uncertainty_proxy` Object
@@ -210,8 +210,8 @@ Contains individual records for each `(seed, strategy, round)` execution, includ
     "strategies": ["signforge", "round_robin", "random"],
     "seeds": [42, 43, 44],
     "initial_samples_per_class": 2,
-    "num_rounds": 5,
-    "batch_size_per_round": 10,
+    "num_rounds": 25,
+    "batch_size_per_round": 2,
     "uncertainty_proxy": {
       "method": "k_fold_cross_validation_error",
       "num_folds": 3,

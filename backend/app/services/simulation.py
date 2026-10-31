@@ -5,12 +5,14 @@ Compares three collection strategies on a standardized 10-class ISL subset:
   2. Balanced round-robin (class balance)
   3. Uniform random selection (uninformed random)
 
-Enforces strict evaluation fairness:
-  - Identical initial labeled pool D_0 across all strategies
+Protocol: 2-by-25 Acquisition Schedule
+  - 10-sign vocabulary
+  - B = 2 samples per round
+  - R = 25 maximum rounds (50 acquired samples total)
+  - Identical initial labeled pool D_0 (20 samples: 2 per sign)
   - Identical candidate pool U_0 across all strategies
-  - Equal acquisition budget (B=10 samples per round, R=5 rounds)
   - Frozen test set completely isolated from ranking, folds, and training
-  - Deterministic seeds [42, 43, 44] (or 5 seeds)
+  - Deterministic seeds [42, 43, 44]
 """
 
 import hashlib
@@ -41,8 +43,8 @@ BENCHMARK_CLASSES = [
 ]
 
 DEFAULT_SEEDS = [42, 43, 44]
-DEFAULT_ROUNDS = 5
-DEFAULT_BATCH_SIZE = 10
+DEFAULT_ROUNDS = 25
+DEFAULT_BATCH_SIZE = 2
 DEFAULT_INITIAL_PER_CLASS = 2
 
 
@@ -83,7 +85,6 @@ def generate_benchmark_subset(
     # Base motion templates for each class (simulating 27 OpenHands keypoints over 30 frames)
     # Distinct temporal frequencies and spatial movement patterns with class similarities
     for c_idx, gloss in enumerate(classes):
-        # Kinematic parameters for this sign
         freq_primary = 0.5 + 0.2 * (c_idx % 5)
         freq_secondary = 0.8 + 0.3 * (c_idx // 5)
         phase_offset = c_idx * 0.6
@@ -111,8 +112,6 @@ def generate_benchmark_subset(
             feat[:, 0, 1] = -0.4 + rng.normal(0, 0.02, T)
 
             # Hand trajectories (dominant hand pts 16..26, non-dominant 5..15)
-            # Trajectory reflects class signature + sample variance
-            inst_jitter = rng.normal(0, 0.05)
             inst_speed = rng.uniform(0.85, 1.15)
             
             sig_x = 0.3 * np.sin(2 * np.pi * freq_primary * inst_speed * t_axis + phase_offset)
@@ -164,7 +163,7 @@ class SimulationHarness:
         batch_size: int = DEFAULT_BATCH_SIZE,
         initial_per_class: int = DEFAULT_INITIAL_PER_CLASS,
         k_folds: int = 3,
-        epochs: int = 60,
+        epochs: int = 50,
     ):
         self.classes = classes
         self.num_classes = len(classes)
@@ -216,9 +215,15 @@ class SimulationHarness:
         t_start = time.perf_counter()
         strategies = ["signforge", "round_robin", "random"]
         forbidden_test_ids = {s.id for s in test_set}
+        warnings_list: list[str] = [
+            "Benchmark results are exploratory simulation metrics on a 10-class standardized INCLUDE subset; do not interpret as generalized ISL translation capability.",
+            "Transfer learning tests T1-T4 determined transfer is Blocked because T1 failed (unpickling / pytorch_lightning dependency mismatch); baseline model is trained from scratch.",
+            "Signer IDs are unverified in the public INCLUDE dataset metadata; evaluation is not signer-independent and uses the frozen official subset split.",
+            "Model uncertainty is computed as a multi-fold validation-error proxy (1 - recall) over the permitted training pool, not predictive entropy or Bayesian uncertainty.",
+            "The live SIGNFORGE application is a demo collection layer; team recordings and demo fixtures are strictly excluded from this scientific benchmark.",
+        ]
 
         # Structure to collect all run logs
-        # seed -> strategy -> list of round records (0..R)
         run_results: dict[int, dict[str, list[dict]]] = {s: {st: [] for st in strategies} for s in self.seeds}
         audit_runs: list[dict[str, Any]] = []
 
@@ -226,15 +231,12 @@ class SimulationHarness:
             rng = np.random.default_rng(seed)
 
             # 1. Partition train_pool into initial D_0 and candidate U_0
-            # Exactly initial_per_class samples per sign in D_0
             d0_samples: list[BenchmarkSample] = []
             u0_samples: list[BenchmarkSample] = []
 
             for gloss in self.classes:
                 class_samples = [s for s in train_pool if s.sign == gloss]
-                # Sort deterministically
                 class_samples.sort(key=lambda x: x.id)
-                # Pick initial_per_class deterministically using seed
                 perm = rng.permutation(len(class_samples))
                 init_idx = set(perm[:self.initial_per_class])
 
@@ -261,6 +263,7 @@ class SimulationHarness:
                     "macro_f1": r0_metrics["macro_f1"],
                     "per_class": r0_metrics["per_class"],
                     "acquired_ids": [],
+                    "selected_signs": [],
                 }
                 run_results[seed][strat].append(r0_record)
                 audit_runs.append(r0_record)
@@ -271,8 +274,8 @@ class SimulationHarness:
                 candidates = list(u0_samples)
 
                 for r in range(1, self.num_rounds + 1):
-                    # Select batch of samples from candidates
                     selected: list[BenchmarkSample] = []
+                    selected_signs: list[str] = []
 
                     if strat == "signforge":
                         # Compute validation-error proxy on current labeled set
@@ -295,12 +298,11 @@ class SimulationHarness:
                             for sign in self.classes
                         }
 
-                        # Current counts
                         current_counts = {c: 0 for c in self.classes}
                         for s in labeled:
                             current_counts[s.sign] += 1
 
-                        # Call shared ranker
+                        # Call shared ranker with approved weights
                         ranked = rank_collection_tasks(
                             sign_classes=self.classes,
                             sample_counts=current_counts,
@@ -309,71 +311,80 @@ class SimulationHarness:
                             target_samples_per_sign=10,
                         )
 
-                        # Acquire candidates following ranked priority
-                        remaining_candidates = list(candidates)
-                        needed = self.batch_size
+                        # Filter eligible signs that have remaining candidates
+                        eligible_ranked = [
+                            item.sign for item in ranked
+                            if any(c.sign == item.sign for c in candidates)
+                        ]
 
-                        # Cycle through ranked signs to collect 'needed' samples
-                        while needed > 0 and remaining_candidates:
-                            added_in_pass = 0
-                            for item in ranked:
-                                sign_candidates = [c for c in remaining_candidates if c.sign == item.sign]
-                                if sign_candidates:
-                                    # Pick next available candidate (sorted by id)
-                                    sign_candidates.sort(key=lambda x: x.id)
-                                    chosen = sign_candidates[0]
-                                    selected.append(chosen)
-                                    remaining_candidates.remove(chosen)
-                                    needed -= 1
-                                    added_in_pass += 1
-                                    if needed == 0:
-                                        break
-                            if added_in_pass == 0:
-                                # No candidates left matching ranked signs
-                                break
+                        if len(eligible_ranked) < self.batch_size:
+                            warnings_list.append(
+                                f"Seed {seed} Round {r}: SIGNFORGE cannot meet budget of {self.batch_size}. "
+                                f"Only {len(eligible_ranked)} eligible signs remain."
+                            )
+                            break
+
+                        # Select the top-2 highest-priority eligible signs
+                        target_signs = eligible_ranked[:self.batch_size]
+                        for sign in target_signs:
+                            sign_cands = [c for c in candidates if c.sign == sign]
+                            sign_cands.sort(key=lambda x: x.id)
+                            chosen = sign_cands[0]
+                            selected.append(chosen)
+                            selected_signs.append(sign)
+                            candidates.remove(chosen)
 
                     elif strat == "round_robin":
-                        # Class-balanced selection
-                        remaining_candidates = list(candidates)
-                        needed = self.batch_size
+                        # Class-balanced selection: find least-sampled eligible signs
+                        counts = {c: 0 for c in self.classes}
+                        for s in labeled:
+                            counts[s.sign] += 1
 
-                        while needed > 0 and remaining_candidates:
-                            # Count samples per class in current labeled + selected
-                            combined_counts = {c: 0 for c in self.classes}
-                            for s in labeled + selected:
-                                combined_counts[s.sign] += 1
+                        eligible_signs = [
+                            c for c in self.classes
+                            if any(cand.sign == c for cand in candidates)
+                        ]
 
-                            # Sort classes by (count, gloss) ascending
-                            sorted_classes = sorted(self.classes, key=lambda c: (combined_counts[c], c))
+                        if len(eligible_signs) < self.batch_size:
+                            warnings_list.append(
+                                f"Seed {seed} Round {r}: Round-Robin cannot meet budget of {self.batch_size}. "
+                                f"Only {len(eligible_signs)} eligible signs remain."
+                            )
+                            break
 
-                            added_in_pass = 0
-                            for cls in sorted_classes:
-                                cls_candidates = [c for c in remaining_candidates if c.sign == cls]
-                                if cls_candidates:
-                                    cls_candidates.sort(key=lambda x: x.id)
-                                    chosen = cls_candidates[0]
-                                    selected.append(chosen)
-                                    remaining_candidates.remove(chosen)
-                                    needed -= 1
-                                    added_in_pass += 1
-                                    if needed == 0:
-                                        break
-                            if added_in_pass == 0:
-                                break
+                        # Sort by (count, sign_name) ascending for deterministic alphabetical tie-breaking
+                        sorted_eligible = sorted(eligible_signs, key=lambda c: (counts[c], c))
+
+                        # Select the two least-sampled eligible signs
+                        target_signs = sorted_eligible[:self.batch_size]
+                        for sign in target_signs:
+                            sign_cands = [c for c in candidates if c.sign == sign]
+                            sign_cands.sort(key=lambda x: x.id)
+                            chosen = sign_cands[0]
+                            selected.append(chosen)
+                            selected_signs.append(sign)
+                            candidates.remove(chosen)
 
                     elif strat == "random":
-                        # Uniform random selection from remaining candidates
-                        round_rng = np.random.default_rng(seed * 1000 + r)
-                        cand_indices = round_rng.permutation(len(candidates))
-                        pick_n = min(self.batch_size, len(candidates))
-                        selected = [candidates[i] for i in cand_indices[:pick_n]]
+                        if len(candidates) < self.batch_size:
+                            warnings_list.append(
+                                f"Seed {seed} Round {r}: Random cannot meet budget of {self.batch_size}. "
+                                f"Only {len(candidates)} candidates remain."
+                            )
+                            break
 
-                    # Update labeled and candidate pools
+                        round_rng = np.random.default_rng(seed * 1000 + r)
+                        cand_indices = round_rng.choice(len(candidates), size=self.batch_size, replace=False)
+                        selected = [candidates[i] for i in cand_indices]
+                        for s in selected:
+                            selected_signs.append(s.sign)
+                            candidates.remove(s)
+
+                    # Update labeled set
                     for s in selected:
-                        candidates.remove(s)
                         labeled.append(s)
 
-                    # Retrain baseline model on updated labeled pool & evaluate on frozen test set
+                    # Retrain baseline model fresh on updated labeled pool & evaluate on frozen test set
                     metrics = self._train_and_eval(labeled, test_set, seed=seed)
 
                     record = {
@@ -386,12 +397,12 @@ class SimulationHarness:
                         "macro_f1": metrics["macro_f1"],
                         "per_class": metrics["per_class"],
                         "acquired_ids": [s.id for s in selected],
+                        "selected_signs": selected_signs,
                     }
                     run_results[seed][strat].append(record)
                     audit_runs.append(record)
 
         # 3. Compute aggregate statistics across seeds
-        # Summary & Curves
         curves_points: dict[str, list[dict]] = {st: [] for st in strategies}
 
         for strat in strategies:
@@ -440,6 +451,7 @@ class SimulationHarness:
             }
 
         total_duration = round(time.perf_counter() - t_start, 2)
+        warnings_list.append(f"Benchmark execution completed across {len(self.seeds)} seeds in {total_duration}s.")
 
         # Assemble full benchmark artifact matching docs/BENCHMARK_SCHEMA.md
         benchmark_results = {
@@ -478,6 +490,12 @@ class SimulationHarness:
                     "missing_class_fallback": "null_unavailable",
                     "labeled_as_predictive_entropy": False,
                 },
+                "ranker_weights": {
+                    "uncertainty": 0.50,
+                    "coverage_gap": 0.30,
+                    "signer_gap": 0.20,
+                    "renormalize_missing": True,
+                },
             },
             "model": {
                 "architecture": "GRUClassifier",
@@ -502,12 +520,7 @@ class SimulationHarness:
                 "points_per_strategy": curves_points,
             },
             "runs": audit_runs,
-            "warnings": [
-                "Signer IDs are unverified in the public INCLUDE dataset metadata; evaluation is not signer-independent and uses the frozen official subset split.",
-                "Model uncertainty is computed as a multi-fold validation-error proxy (1 - recall) over the permitted training pool, not predictive entropy or Bayesian uncertainty.",
-                "The live SIGNFORGE application is a demo collection layer; team recordings and demo fixtures are strictly excluded from this scientific benchmark.",
-                f"Benchmark execution completed across {len(self.seeds)} seeds in {total_duration}s.",
-            ],
+            "warnings": warnings_list,
         }
 
         return benchmark_results

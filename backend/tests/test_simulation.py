@@ -3,10 +3,17 @@ import pytest
 
 from app.services.simulation import (
     BENCHMARK_CLASSES,
+    DEFAULT_BATCH_SIZE,
+    DEFAULT_ROUNDS,
     SimulationHarness,
     compute_pool_hash,
     generate_benchmark_subset,
 )
+
+
+def test_default_protocol_constants():
+    assert DEFAULT_ROUNDS == 25
+    assert DEFAULT_BATCH_SIZE == 2
 
 
 def test_generate_benchmark_subset():
@@ -54,7 +61,7 @@ def test_simulation_harness_execution_and_schema():
         classes=classes,
         seeds=[42],
         num_rounds=2,
-        batch_size=3,
+        batch_size=2,
         initial_per_class=2,
         k_folds=2,
         epochs=5,
@@ -93,7 +100,7 @@ def test_simulation_harness_execution_and_schema():
         assert "final_accuracy_mean" in strat_sum
         assert "final_macro_f1_mean" in strat_sum
         assert "macro_f1_gain_mean" in strat_sum
-        assert strat_sum["samples_added"] == 6
+        assert strat_sum["samples_added"] == 4
 
     # Check curves
     curves = results["curves"]["points_per_strategy"]
@@ -143,3 +150,45 @@ def test_simulation_fairness_equal_starting_and_budget():
     r2_rd = curves["random"][2]
     assert r2_sf["total_training_samples"] == r2_rr["total_training_samples"] == r2_rd["total_training_samples"] == 8
 
+
+def test_strategy_selection_divergence():
+    """Verify that with batch_size=2, SIGNFORGE and Round-Robin make different collection choices."""
+    classes = ["DOCTOR", "EMERGENCY", "FOOD", "HOSPITAL", "WATER"]
+    train_pool, test_set = generate_benchmark_subset(
+        classes=classes,
+        samples_per_class=8,
+        test_per_class=2,
+        seed=42,
+    )
+
+    harness = SimulationHarness(
+        classes=classes,
+        seeds=[42],
+        num_rounds=3,
+        batch_size=2,
+        initial_per_class=2,
+        k_folds=2,
+        epochs=5,
+    )
+
+    results = harness.run_simulation(train_pool, test_set)
+    runs = results["runs"]
+
+    # Group runs by strategy
+    sf_rounds = [r for r in runs if r["strategy"] == "signforge" and r["round"] > 0]
+    rr_rounds = [r for r in runs if r["strategy"] == "round_robin" and r["round"] > 0]
+    rd_rounds = [r for r in runs if r["strategy"] == "random" and r["round"] > 0]
+
+    assert len(sf_rounds) == 3
+    assert len(rr_rounds) == 3
+    assert len(rd_rounds) == 3
+
+    # Compare selected sign sequence between SIGNFORGE and Round-Robin
+    sf_signs_per_round = [tuple(sorted(r["selected_signs"])) for r in sf_rounds]
+    rr_signs_per_round = [tuple(sorted(r["selected_signs"])) for r in rr_rounds]
+
+    # At least one round must diverge in selected signs or acquired sample IDs
+    sf_acquired_ids = [set(r["acquired_ids"]) for r in sf_rounds]
+    rr_acquired_ids = [set(r["acquired_ids"]) for r in rr_rounds]
+
+    assert sf_signs_per_round != rr_signs_per_round or sf_acquired_ids != rr_acquired_ids

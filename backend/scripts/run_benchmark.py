@@ -22,6 +22,8 @@ if str(backend_dir) not in sys.path:
     sys.path.insert(0, str(backend_dir))
 
 from app.services.simulation import (
+    DEFAULT_BATCH_SIZE,
+    DEFAULT_ROUNDS,
     DEFAULT_SEEDS,
     SimulationHarness,
     generate_benchmark_subset,
@@ -108,9 +110,9 @@ def format_table(results: dict) -> str:
 def main():
     parser = argparse.ArgumentParser(description="Run SIGNFORGE evaluation simulation benchmark")
     parser.add_argument("--seeds", nargs="+", type=int, default=DEFAULT_SEEDS, help="Random seeds for evaluation")
-    parser.add_argument("--rounds", type=int, default=5, help="Number of acquisition rounds (default: 5)")
-    parser.add_argument("--batch-size", type=int, default=10, help="Batch size per round (default: 10)")
-    parser.add_argument("--epochs", type=int, default=60, help="Model training epochs (default: 60)")
+    parser.add_argument("--rounds", type=int, default=DEFAULT_ROUNDS, help=f"Number of acquisition rounds (default: {DEFAULT_ROUNDS})")
+    parser.add_argument("--batch-size", type=int, default=DEFAULT_BATCH_SIZE, help=f"Batch size per round (default: {DEFAULT_BATCH_SIZE})")
+    parser.add_argument("--epochs", type=int, default=50, help="Model training epochs (default: 50)")
     parser.add_argument("--output", type=str, default="data/benchmark_results.json", help="Output JSON path")
     args = parser.parse_args()
 
@@ -133,9 +135,17 @@ def main():
     print("\n" + table_str + "\n")
 
     # Save artifact
-    output_path = Path(args.output)
-    if not output_path.is_absolute():
-        output_path = backend_dir.parent / output_path
+    raw_path = Path(args.output)
+    if raw_path.is_absolute():
+        output_path = raw_path
+    else:
+        cwd_cand = (Path.cwd() / raw_path).resolve()
+        repo_root = backend_dir.parent.resolve()
+        if cwd_cand.is_relative_to(repo_root):
+            output_path = cwd_cand
+        else:
+            output_path = (repo_root / "data" / raw_path.name).resolve()
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     with open(output_path, "w", encoding="utf-8") as f:
@@ -147,4 +157,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
