@@ -3,8 +3,9 @@
 **Status: a from-scratch baseline exists; transfer learning is NOT verified.** Nothing in this file is a performance result; runs and their metrics live in the app (Models & Evaluation).
 
 ## Baseline (Milestone 3)
-- GRU (hidden 64) over the shared `model_input()` features: 10 fps, stretched to 30 frames, 27 points × x/y, OpenHands shoulder normalisation. Random initialisation; no pretrained weights.
-- Full-batch Adam, 80 epochs, lr 1e-3, weight decay 1e-4, seed 0. No validation split and no model selection (fixed epochs), so the test set is never used for tuning.
+- GRU (hidden 128) over the shared `model_input()` features: 10 fps, stretched to 30 frames, 27 points × x/y, OpenHands shoulder normalisation. Random initialisation; no pretrained weights.
+- Full-batch Adam, 300 epochs, lr 3e-3, weight decay 1e-4, seed 0. Changed on 31 Oct 2026 from hidden 64 / 80 epochs / lr 1e-3, which underfit INCLUDE Greetings (train accuracy 0.65). The new values were chosen on the INCLUDE validation split over 3 seeds; no test split was used for tuning. Run #3 (old settings, 28% test accuracy) and run #4 (new settings, 53%) are both kept.
+- External pool (INCLUDE): the frozen split holds out one whole recording session per sign as test and one as validation. Temperature scaling is fitted on validation and judged on test (ECE, NLL). Run #4: T = 2.80, test ECE 0.42 → 0.20, so the reliability check (ECE ≤ 0.10) **failed**.
 - Splits: the first run freezes the test set. ≥3 signers → hold out one whole signer (the one covering the most signs); otherwise a stratified random clip split, labelled *not signer-independent*. New samples only join train.
 - Eligibility: real pool = approved + QC-passed captures; demo pool = QC-passed DEMO DATA not rejected/sent back by a reviewer. The two pools are never mixed.
 - Known limit: on DEMO DATA the baseline scores 100% because the synthetic signs differ only by a sine-wave frequency. That proves the pipeline runs, nothing more.

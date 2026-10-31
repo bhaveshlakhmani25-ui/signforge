@@ -80,3 +80,5 @@ def test_external_pool_trains_and_calibrates_on_val_judged_on_test():
         assert set(run["metrics"]["val_sample_ids"]).isdisjoint(run["test_sample_ids"] + run["train_sample_ids"])
         assert run["metrics"]["label_glosses"] == {str(signs[0]): "A", str(signs[1]): "B"}
         assert isinstance(cal["reliability_passed"], bool) and cal["temperature"] > 0
+        assert client.post(f"/api/consents/{consent}/withdraw", json={"delete_samples": False}).status_code == 200
+        assert client.post("/api/models/train-baseline", json={"project_id": p, "pool": "external"}).status_code == 422

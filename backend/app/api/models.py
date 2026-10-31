@@ -34,9 +34,12 @@ def eligible_samples(session: Session, project_id: int, pool: str) -> list[Sampl
     Demo pool: QC-passed DEMO DATA not rejected/sent back by a reviewer.
     External pool: QC-passed external-dataset clips (labels from the dataset, not reviewed by us) not rejected/sent back."""
     q = select(Sample).where(Sample.project_id == project_id, Sample.qc_passed == True)  # noqa: E712
-    if pool == "external":
-        q = q.where(Sample.source == "external_dataset", Sample.review_status.not_in(["rejected", "needs_recapture"]))
-        return list(session.exec(q.order_by(Sample.id)).all())
+    if pool == "external":  # the dataset's licence is recorded as its consent: withdrawing it stops training too
+        q = (select(Sample, ConsentRecord).join(ConsentRecord, Sample.consent_id == ConsentRecord.id)
+             .where(Sample.project_id == project_id, Sample.qc_passed == True, Sample.source == "external_dataset",  # noqa: E712
+                    Sample.review_status.not_in(["rejected", "needs_recapture"])))
+        return [s for s, c in session.exec(q.order_by(Sample.id)).all()
+                if c.status == "active" and "model_training" in c.allowed_uses]
     if pool == "demo":  # still respect any human decision against a sample
         q = q.where(Sample.source == "demo_fixture", Sample.review_status.not_in(["rejected", "needs_recapture"]))
         return list(session.exec(q.order_by(Sample.id)).all())
@@ -96,7 +99,7 @@ def train_baseline_endpoint(body: TrainIn, session: Session = Depends(get_sessio
         project_id=body.project_id, model_kind="baseline", pool=body.pool, feature_schema_version=FEATURE_SCHEMA_VERSION,
         preprocessing={"target_fps": C.TARGET_FPS, "frames": C.MODEL_FRAMES, "points": "openhands minimal_27, x/y",
                        "normalisation": "clip-level shoulder centre/scale (OpenHands)"},
-        data_version=hashlib.sha256("|".join(f"{s.id}:{s.feature_sha256}:{s.split}" for s in train + test).encode())
+        data_version=hashlib.sha256("|".join(f"{s.id}:{s.feature_sha256}:{s.split}" for s in train + val + test).encode())
         .hexdigest()[:12],
         split_strategy=strategy, train_sample_ids=[s.id for s in train], test_sample_ids=[s.id for s in test],
         seed=C.SEED, config={"model": "GRU", **C.BASELINE}))
