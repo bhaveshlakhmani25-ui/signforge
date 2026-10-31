@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "setup:models": "mkdir -p public/models && cp node_modules/@mediapipe/tasks-vision/wasm/* public/models/ && curl -fsSL -o public/models/holistic_landmarker.task https://storage.googleapis.com/mediapipe-models/holistic_landmarker/holistic_landmarker/float16/latest/holistic_landmarker.task",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:gestures": "node --experimental-strip-types --no-warnings lib/__tests__/gestures.test.ts"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^1.1.0",

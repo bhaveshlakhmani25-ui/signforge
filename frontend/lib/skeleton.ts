@@ -1,8 +1,8 @@
 // Edges copied from @mediapipe/tasks-vision 1.1.0 (HolisticLandmarker.POSE_CONNECTIONS limited to face, arms and hands,
 // i.e. landmarks 0-22; HAND_CONNECTIONS), so pages that only replay stored landmarks don't load the MediaPipe bundle.
 // Hips/legs are left out: a seated webcam never sees them, MediaPipe extrapolates them, and the model doesn't use them.
-const UPPER_BODY = [[0,1],[1,2],[2,3],[3,7],[0,4],[4,5],[5,6],[6,8],[9,10],[11,12],[11,13],[13,15],[15,17],[15,19],[15,21],[17,19],[12,14],[14,16],[16,18],[16,20],[16,22],[18,20]];
-const HAND = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[0,17],[17,18],[18,19],[19,20]];
+export const UPPER_BODY = [[0,1],[1,2],[2,3],[3,7],[0,4],[4,5],[5,6],[6,8],[9,10],[11,12],[11,13],[13,15],[15,17],[15,19],[15,21],[17,19],[12,14],[14,16],[16,18],[16,20],[16,22],[18,20]];
+export const HAND = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[0,17],[17,18],[18,19],[19,20]];
 
 export type Pt = { x: number; y: number };
 export type SkeletonParts = { pose: Pt[] | null; left: Pt[] | null; right: Pt[] | null };

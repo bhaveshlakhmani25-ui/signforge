@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { api, type ModelRun, type Project, type SignClass, when } from "@/lib/api";
+import { api, currentProject, type Calibration, type ModelRun, type SignClass, when } from "@/lib/api";
 import { card, DemoBadge, ErrorBanner } from "@/components/ui";
 
 const pct = (v?: number | null) => (v == null ? "Not evaluated" : `${(v * 100).toFixed(1)}%`);
 
 async function fetchModels() {
-  const [project] = await api<Project[]>("/api/projects");
+  const project = await currentProject();
   if (!project) throw new Error("No project exists yet. A teammate needs to run `python scripts/seed.py` in the backend folder.");
   const [runs, classes] = await Promise.all([
     api<ModelRun[]>(`/api/models/runs?project_id=${project.id}`),
@@ -16,16 +16,43 @@ async function fetchModels() {
   return { project, runs, classes };
 }
 
+function CalibrationBlock({ c }: { c: Calibration }) {
+  const ece = (v: number) => v.toFixed(3);
+  return (
+    <div className="space-y-2 text-sm">
+      <p className="max-w-[58ch]">
+        <span className={`mr-2 rounded-md px-2 py-0.5 text-xs ${c.reliability_passed ? "bg-teal/15 text-teal" : "bg-amber-100 text-amber-950"}`}>
+          Reliability check {c.reliability_passed ? "passed" : "failed"}</span>
+        Calibrated with temperature scaling (T = {c.temperature.toFixed(2)}, fitted on {c.n_val} validation clips), judged on the {c.test_after.n} frozen test clips:
+        calibration error {ece(c.test_before.ece)} → {ece(c.test_after.ece)} (pass at ≤ {c.max_ece}), log-loss {c.test_nll_before.toFixed(2)} → {c.test_nll_after.toFixed(2)}.
+        {!c.reliability_passed && " Confidence percentages from this model still overstate how often it is right."}
+      </p>
+      <details>
+        <summary className="cursor-pointer text-indigo">How often the calibrated model was right, by confidence (test clips)</summary>
+        <table className="mt-2 text-xs">
+          <thead><tr>{["Confidence", "Clips", "Mean confidence", "Actually right"].map((h) => <th key={h} scope="col" className="p-1 pr-3 text-left font-medium">{h}</th>)}</tr></thead>
+          <tbody>{c.test_after.bins.map((b) => (
+            <tr key={b.lo} className="border-t border-lavender/60 tabular-nums">
+              <td className="p-1 pr-3">{Math.round(b.lo * 100)}–{Math.round(b.hi * 100)}%</td><td className="p-1 pr-3">{b.n}</td>
+              <td className="p-1 pr-3">{b.mean_confidence == null ? "–" : pct(b.mean_confidence)}</td>
+              <td className="p-1 pr-3">{b.accuracy == null ? "–" : `${pct(b.accuracy)} (${Math.round(b.accuracy * b.n)}/${b.n})`}</td>
+            </tr>))}</tbody>
+        </table>
+      </details>
+    </div>
+  );
+}
+
 export default function ModelsPage() {
   const [data, setData] = useState<Awaited<ReturnType<typeof fetchModels>> | null>(null);
   const [error, setError] = useState("");
   const [trainError, setTrainError] = useState("");
-  const [training, setTraining] = useState<"" | "real" | "demo">("");
+  const [training, setTraining] = useState<"" | ModelRun["pool"]>("");
 
   const reload = useCallback(() => fetchModels().then((d) => { setData(d); setError(""); }, (e) => setError(e.message)), []);
   useEffect(() => { reload(); }, [reload]);
 
-  async function train(pool: "real" | "demo") {
+  async function train(pool: ModelRun["pool"]) {
     setTraining(pool); setTrainError("");
     try {
       await api<ModelRun>("/api/models/train-baseline", { body: { project_id: data!.project.id, pool } });
@@ -58,6 +85,9 @@ export default function ModelsPage() {
             <button className="rounded-lg border border-amber-600 px-3 py-2 text-sm text-amber-900 disabled:opacity-60" disabled={!data || !!training} onClick={() => train("demo")}>
               {training === "demo" ? "Training…" : "Train on DEMO DATA"}
             </button>
+            <button className="rounded-lg border border-indigo px-3 py-2 text-sm text-indigo disabled:opacity-60" disabled={!data || !!training} onClick={() => train("external")}>
+              {training === "external" ? "Training…" : "Train on external dataset"}
+            </button>
           </div>
           {trainError && <p role="alert" className="mt-2 text-sm text-red-900">Training didn&apos;t start. {trainError}</p>}
         </section>
@@ -80,6 +110,7 @@ export default function ModelsPage() {
               <span className={`rounded-md px-2 py-0.5 text-xs ${r.status === "succeeded" ? "bg-teal/15 text-teal" : r.status === "failed" ? "bg-red-100 text-red-900" : "bg-amber-100 text-amber-950"}`}>{r.status}</span>
               <span className="text-xs text-indigo">{when(r.created_at)} · {r.duration_s}s</span>
             </header>
+            {r.pool === "external" && <p className="max-w-[58ch] text-xs">External dataset (labels come from the dataset, not from our reviewers). The test set holds out whole recording sessions per sign; signer identity is unknown, so these results are <strong>not</strong> signer-independent.</p>}
             {r.pool === "demo" && <p className="text-xs text-amber-900">Synthetic DEMO DATA: these numbers only show the pipeline works. They say nothing about real {data.project.target_language} performance.</p>}
             {r.status === "failed" && <p className="text-sm text-red-900">{r.failure_detail}</p>}
             {r.status === "succeeded" && (
@@ -92,6 +123,7 @@ export default function ModelsPage() {
                 </dl>
                 <p className="max-w-[58ch] text-xs"><strong>Split:</strong> {r.split_strategy}. Macro-F1 is averaged over {r.metrics.macro_f1_over}.
                   {" "}<strong>Checkpoint:</strong> {r.checkpoint_reference}. <strong>Seed:</strong> {r.seed}. <strong>Config:</strong> {Object.entries(r.config).map(([k, v]) => `${k}=${v}`).join(", ")}.</p>
+                {r.metrics.calibration && <CalibrationBlock c={r.metrics.calibration} />}
                 {r.metrics.confusion_matrix && r.metrics.labels && (
                   <details>
                     <summary className="cursor-pointer text-sm text-indigo">Confusion matrix and per-class results</summary>
@@ -100,7 +132,7 @@ export default function ModelsPage() {
                         <caption className="pb-1 text-left">Rows: true sign · columns: predicted sign</caption>
                         <thead><tr><th scope="col" className="p-1"><span className="sr-only">True sign</span></th>
                           {r.metrics.labels.map((l) => <th key={l} scope="col" className="p-1 font-medium">{gloss(l)}</th>)}
-                          <th scope="col" className="p-1 font-medium">Support</th><th scope="col" className="p-1 font-medium">F1</th></tr></thead>
+                          <th scope="col" className="p-1 font-medium">Recall</th><th scope="col" className="p-1 font-medium">F1</th></tr></thead>
                         <tbody>
                           {r.metrics.confusion_matrix.map((row, i) => {
                             const l = r.metrics.labels![i];
@@ -109,7 +141,7 @@ export default function ModelsPage() {
                               <tr key={l}>
                                 <th scope="row" className="p-1 text-left font-medium">{gloss(l)}</th>
                                 {row.map((v, j) => <td key={j} className={`p-1 text-center ${v ? (i === j ? "bg-teal/20" : "bg-red-100") : ""}`}>{v}</td>)}
-                                <td className="p-1 text-center">{pc?.support ?? 0}</td>
+                                <td className="p-1 text-center tabular-nums">{pc?.support ? `${row[i]}/${pc.support}` : "–"}</td>
                                 <td className="p-1 text-center">{pc?.support ? pc.f1.toFixed(2) : "–"}</td>
                               </tr>
                             );

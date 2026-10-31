@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useState } from "react";
-import { api, type Consent, type Project, type ReviewEvent, type ReviewStatus, type Sample, type SignClass, type Signer, when } from "@/lib/api";
+import { api, currentProject, type Consent, type ReviewEvent, type ReviewStatus, type Sample, type SignClass, type Signer, when } from "@/lib/api";
 import { card, DemoBadge, ErrorBanner } from "@/components/ui";
 
 const ROLES = [
@@ -20,7 +20,7 @@ const STATUS: Record<ReviewStatus, [string, string]> = {
 const Badge = ({ s }: { s: ReviewStatus }) => <span className={`rounded-md px-2 py-0.5 text-xs ${STATUS[s][1]}`}>{STATUS[s][0]}</span>;
 
 async function fetchCorpus() {
-  const [project] = await api<Project[]>("/api/projects");
+  const project = await currentProject();
   if (!project) throw new Error("No project exists yet. A teammate needs to run `python scripts/seed.py` in the backend folder.");
   const [samples, classes, signers] = await Promise.all([
     api<Sample[]>(`/api/samples?project_id=${project.id}&include_demo=true`),
@@ -66,7 +66,7 @@ export default function CorpusPage() {
 
       {data && (
         <section aria-labelledby="coverage" className={card}>
-          <h2 id="coverage" className="font-semibold">Coverage by sign (real samples only; DEMO DATA excluded)</h2>
+          <h2 id="coverage" className="font-semibold">Coverage by sign (captured and external-dataset samples; DEMO DATA excluded)</h2>
           <div className="relative mt-3 overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="text-xs text-indigo"><tr>
@@ -102,7 +102,7 @@ export default function CorpusPage() {
           <div className="flex flex-wrap gap-3 text-sm">
             {([
               ["cls", "Sign", data.classes.map((c) => [String(c.id), c.gloss])],
-              ["source", "Source", [["captured", "Captured"], ["demo_fixture", "DEMO DATA"]]],
+              ["source", "Source", [["captured", "Captured"], ["external_dataset", "External dataset"], ["demo_fixture", "DEMO DATA"]]],
               ["review", "Review", Object.entries(STATUS).map(([k, [l]]) => [k, l])],
               ["qc", "Automated check", [["true", "Passed"], ["false", "Failed"]]],
             ] as [keyof Filters, string, string[][]][]).map(([key, label, opts]) => (
@@ -121,7 +121,7 @@ export default function CorpusPage() {
             <div className="relative overflow-x-auto rounded-xl border border-lavender bg-white">
               <table className="w-full text-left text-sm">
                 <thead className="bg-navy text-white">
-                  <tr>{["#", "Sign", "Signer", "Source", "Frames", "Automated check", "Human review", "Split", "Created", ""].map((h) =>
+                  <tr>{["#", "Sign", "Signer", "Source", "Frames", "Automated check", "Model check", "Human review", "Split", "Created", ""].map((h) =>
                     <th key={h} scope="col" className="px-3 py-2 font-medium">{h || <span className="sr-only">Actions</span>}</th>)}</tr>
                 </thead>
                 <tbody>
@@ -131,13 +131,14 @@ export default function CorpusPage() {
                         <td className="px-3 py-2">{s.id}</td>
                         <td className="px-3 py-2 font-medium">{gloss(s.sign_class_id)}</td>
                         <td className="px-3 py-2">{code(s.signer_id)}</td>
-                        <td className="px-3 py-2">{s.source === "demo_fixture" ? <DemoBadge /> : s.source}</td>
+                        <td className="px-3 py-2">{s.source === "demo_fixture" ? <DemoBadge /> : s.source === "external_dataset" ? `${s.dataset_name || "external"} (external)` : s.source}</td>
                         <td className="px-3 py-2">{s.frame_count} · {s.qc_metrics.duration_s ?? "?"}s</td>
                         <td className="px-3 py-2">
                           {s.qc_passed ? <span className="text-teal">Passed</span> : <span className="text-red-800">Failed</span>}
                           <span className="text-xs"> · {(s.quality_score * 100).toFixed(0)}% complete</span>
                           {s.quality_flags.length > 0 && <ul className="mt-1 text-xs">{s.quality_flags.map((q) => <li key={q.code}>{q.severity === "error" ? "Problem" : "Warning"}: {q.code.replaceAll("_", " ")}</li>)}</ul>}
                         </td>
+                        <td className="px-3 py-2 text-xs"><ModelCheck s={s} /></td>
                         <td className="px-3 py-2"><Badge s={s.review_status} /></td>
                         <td className="px-3 py-2">{s.split}</td>
                         <td className="px-3 py-2 text-xs">{when(s.created_at)}</td>
@@ -166,6 +167,24 @@ export default function CorpusPage() {
         </section>
       )}
     </div>
+  );
+}
+
+const TRIAGE: Record<string, [string, string]> = {
+  auto_rejected: ["Auto-rejected", "bg-red-100 text-red-900"],
+  model_verified: ["Model-verified (not human-verified)", "bg-teal/15 text-teal"],
+  needs_review: ["Needs review", "bg-amber-100 text-amber-950"],
+};
+
+function ModelCheck({ s }: { s: Sample }) {
+  if (!s.triage_status) return <span className="text-indigo">Not scored</span>;
+  const [label, cls] = TRIAGE[s.triage_status];
+  return (
+    <>
+      <span className={`rounded-md px-2 py-0.5 ${cls}`}>{label}</span>
+      {s.match_confidence != null && <span className="mt-1 block">Matches the dataset at {(s.match_confidence * 100).toFixed(0)}%{s.predicted_sign && s.triage?.claimed_sign && s.predicted_sign !== s.triage.claimed_sign && `; looks like ${s.predicted_sign}`}</span>}
+      {s.audited && <span className="mt-1 block">Picked for audit</span>}
+    </>
   );
 }
 
@@ -220,6 +239,15 @@ function SampleDetail({ sample: s, onDone }: { sample: Sample; onDone: () => voi
         {s.quality_flags.length ? <ul className="list-disc pl-5 text-xs">{s.quality_flags.map((q) => <li key={q.code}><strong>{q.severity === "error" ? "Problem" : "Warning"}:</strong> {q.message}</li>)}</ul>
           : <p className="text-xs">The automated check found no issues. Human review is still needed.</p>}
         <p className="text-xs text-indigo">{Object.entries(s.qc_metrics).map(([k, v]) => `${k.replaceAll("_", " ")}: ${v}`).join(" · ")}</p>
+        {s.triage?.reason && (
+          <>
+            <h3 className="pt-2 font-semibold">Model check</h3>
+            <p className="text-xs">{s.triage.reason}</p>
+            {!!s.triage.top3?.length && <p className="text-xs">Closest signs: {s.triage.top3.map((t) => `${t.sign} ${(t.p * 100).toFixed(0)}%`).join(" · ")}</p>}
+            {s.triage.per_sign_test_recall && <p className="text-xs">On held-out test clips the model recognised {s.triage.claimed_sign} {s.triage.per_sign_test_recall.hits} of {s.triage.per_sign_test_recall.support} times.</p>}
+            {s.triage.calibration_note && <p className="text-xs text-indigo">{s.triage.calibration_note}</p>}
+          </>
+        )}
       </div>
 
       <div className="space-y-3">

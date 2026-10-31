@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { API_URL, api, type Project, type Sample, type SignClass } from "@/lib/api";
-import { card, DemoBadge, ErrorBanner } from "@/components/ui";
+import { card, ErrorBanner } from "@/components/ui";
 
 export default function ExportPage() {
   const [project, setProject] = useState<Project | null>(null);
@@ -13,29 +13,50 @@ export default function ExportPage() {
   const [approvedOnly, setApprovedOnly] = useState(true);
   const [includeDemo, setIncludeDemo] = useState(false);
 
+  const fetchData = useCallback(async () => {
+    const [p] = await api<Project[]>("/api/projects");
+    if (!p) throw new Error("No project found. Run seed script in backend.");
+    const [s, c] = await Promise.all([
+      api<Sample[]>(`/api/samples?project_id=${p.id}&include_demo=true`),
+      api<SignClass[]>(`/api/sign-classes?project_id=${p.id}`),
+    ]);
+    return { project: p, samples: s, classes: c };
+  }, []);
+
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [p] = await api<Project[]>("/api/projects");
-      if (!p) throw new Error("No project found. Run seed script in backend.");
-      setProject(p);
-
-      const [s, c] = await Promise.all([
-        api<Sample[]>(`/api/samples?project_id=${p.id}&include_demo=true`),
-        api<SignClass[]>(`/api/sign-classes?project_id=${p.id}`),
-      ]);
-      setSamples(s);
-      setClasses(c);
+      const data = await fetchData();
+      setProject(data.project);
+      setSamples(data.samples);
+      setClasses(data.classes);
       setError("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load project details");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchData]);
 
   useEffect(() => {
-    loadData();
+    let active = true;
+    fetchData().then((data) => {
+      if (!active) return;
+      setProject(data.project);
+      setSamples(data.samples);
+      setClasses(data.classes);
+      setError("");
+    }).catch((e: unknown) => {
+      if (active) setError(e instanceof Error ? e.message : "Failed to load project details");
+    }).finally(() => {
+      if (active) setLoading(false);
+    });
+    return () => { active = false; };
+  }, [fetchData]);
+
+  const retry = useCallback(() => {
+    setLoading(true);
+    void loadData();
   }, [loadData]);
 
   const eligibleSamples = samples.filter((s) => {
@@ -63,7 +84,7 @@ export default function ExportPage() {
         </p>
       </header>
 
-      {error && <ErrorBanner message={error} onRetry={loadData} />}
+      {error && <ErrorBanner message={error} onRetry={retry} />}
       {loading && <p className="text-sm">Loading corpus metadata…</p>}
 
       {!loading && project && (

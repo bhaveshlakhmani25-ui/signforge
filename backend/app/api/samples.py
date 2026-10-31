@@ -9,7 +9,9 @@ from app.db import get_session
 from app.db.models import ConsentRecord, ReviewEvent, Sample, SignClass, Signer
 from app.schemas import CaptureIn, ReviewIn
 from app.services.landmark_schema import FEATURE_SCHEMA_VERSION
+from app.services.mock_policy import non_mock_sample_clause
 from app.services import landmark_schema as S
+from app.services import triage
 from app.services.preprocessing import frames_to_arrays, resample
 from app.services.quality_checks import run_qc
 from app.services.storage import load_features, save_features
@@ -37,19 +39,36 @@ def capture(body: CaptureIn, session: Session = Depends(get_session)):
         qc["flags"].append({"code": "duplicate", "severity": "error",
                             "message": f"Identical landmarks already stored as sample #{dup}."})
         qc["passed"] = False
+
+    if body.source == "demo_fixture":
+        prov_note = "DEMO DATA: synthetic, not real signing"
+    elif body.source in ("external_dataset", "public_dataset"):
+        prov_note = f"External: {body.dataset_name} ({body.dataset_license}) - {body.citation}".strip()
+    else:
+        prov_note = "Captured in SIGNFORGE; landmarks only, raw video never uploaded"
+
     sample = Sample(
         project_id=body.project_id, sign_class_id=sign_class.id, signer_id=signer.id, consent_id=consent.id,
         source=body.source, feature_schema_version=FEATURE_SCHEMA_VERSION, extractor=body.extractor,
         extractor_model_sha=body.extractor_model_sha, fps=body.fps, width=body.width, height=body.height,
         frame_count=len(t), quality_score=qc["completeness"], qc_passed=qc["passed"], quality_flags=qc["flags"],
         qc_metrics=qc["metrics"], feature_sha256=sha,
-        provenance_note="DEMO DATA: synthetic, not real signing" if body.source == "demo_fixture"
-        else "Captured in SIGNFORGE; landmarks only, raw video never uploaded",
+        provenance_note=prov_note,
+        dataset_name=body.dataset_name,
+        dataset_version=body.dataset_version,
+        dataset_license=body.dataset_license,
+        citation=body.citation,
+        external_sample_id=body.external_sample_id,
+        external_signer_id=body.external_signer_id,
+        external_split=body.external_split,
     )
     session.add(sample)
     session.flush()  # assign id; nothing is committed unless the feature file is written
     sample.feature_path = save_features(body.project_id, sample.id, points, present, t)
     session.commit()
+    if sample.source == "captured":  # external clips may be the model's own training data; DEMO DATA is synthetic
+        triage.apply(session, sample)
+        session.commit()
     session.refresh(sample)
     return sample
 
@@ -65,7 +84,7 @@ def list_samples(project_id: int, sign_class_id: Optional[int] = None, signer_id
         if val is not None:
             q = q.where(col == val)
     if not include_demo:  # DEMO DATA never enters real listings/evaluation by default
-        q = q.where(Sample.source != "demo_fixture")
+        q = q.where(non_mock_sample_clause())
     return session.exec(q.order_by(Sample.id.desc())).all()
 
 
@@ -101,5 +120,6 @@ def review(sample_id: int, body: ReviewIn, session: Session = Depends(get_sessio
 
 @router.delete("/{sample_id}", status_code=204)
 def delete(sample_id: int, session: Session = Depends(get_session)):
+    """Deletes a sample, its review events and its stored landmark file."""
     delete_sample(session, get_or_404(session, Sample, sample_id))
     session.commit()

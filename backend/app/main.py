@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import export, models, projects, samples
+from app.api import active_learning, benchmark, export, models, projects, samples, triage
 from app.core import config as C
 from app.db import get_session, init_db
 from app.db.models import Sample, SignClass
@@ -25,7 +25,10 @@ app.add_middleware(CORSMiddleware, allow_origins=C.CORS_ORIGINS, allow_methods=[
 app.include_router(projects.router)
 app.include_router(samples.router)
 app.include_router(models.router)
+app.include_router(active_learning.router)
 app.include_router(export.router)
+app.include_router(benchmark.router)
+app.include_router(triage.router)
 
 
 @app.get("/", include_in_schema=False)
@@ -92,4 +95,3 @@ def queue_endpoint(project_id: int = 1, session: Session = Depends(get_session))
         "uncertainty_available": False,
         "items": items,
     }
-

@@ -3,6 +3,7 @@ __pycache__/
 .pytest_cache/
 *.db
 data/processed/
+data/external/
 backend/checkpoints/
 frontend/node_modules/
 frontend/.next/
@@ -22,3 +23,9 @@ dataset/
 *.MOV
 *.mp4
 zenodo_meta.json
+
+# Downloaded public datasets (large, licence-bound)
+data/raw/
+
+# Test runs write fixtures here (tests use relative data/ paths)
+backend/data/

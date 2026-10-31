@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import Nav from "@/components/Nav";
+import { Bodoni_Moda, Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+
+// Self-hosted by next/font at build time: no font request is made at the venue.
+const display = Bodoni_Moda({ subsets: ["latin"], style: ["normal", "italic"], axes: ["opsz"], variable: "--font-display" });
+const body = Hanken_Grotesk({ subsets: ["latin"], variable: "--font-body" });
+const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
   title: "SIGNFORGE",
@@ -10,16 +14,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="h-full antialiased">
-      <body className="min-h-full md:flex">
-        <aside className="bg-navy px-3 py-3 md:sticky md:top-0 md:h-screen md:w-56 md:shrink-0 md:py-6">
-          <Link href="/" className="mb-3 block px-3 font-bold tracking-wide text-white md:mb-6">
-            SIGNFORGE<span className="block text-xs font-normal tracking-normal text-lavender">Corpus builder</span>
-          </Link>
-          <Nav />
-        </aside>
-        <main className="mx-auto w-full min-w-0 max-w-6xl flex-1 px-4 py-6 md:px-8">{children}</main>
-      </body>
+    <html lang="en" className={`h-full antialiased ${display.variable} ${body.variable} ${mono.variable}`}>
+      <body className="min-h-full">{children}</body>
     </html>
   );
 }

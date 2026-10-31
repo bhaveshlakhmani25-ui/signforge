@@ -163,14 +163,14 @@ def test_withdraw_blocks_capture_and_training_and_can_delete_samples(client, ids
         assert s["id"] in [x.id for x in eligible_samples(db, ids["project_id"], "real")]
 
     r = client.post(f"/api/consents/{w['consent_id']}/withdraw", json={"delete_samples": False})
-    assert r.status_code == 200 and r.json() == {"status": "withdrawn", "deleted_samples": 0}
+    assert r.status_code == 200 and r.json()["status"] == "withdrawn" and r.json()["deleted_samples"] == 0
     assert os.path.exists(s["feature_path"])  # kept, but no longer usable
     assert client.post("/api/samples/capture", json=capture_body(client, w)).status_code == 403
     with Session(engine) as db:
         assert s["id"] not in [x.id for x in eligible_samples(db, ids["project_id"], "real")]
 
     again = client.post(f"/api/consents/{w['consent_id']}/withdraw", json={"delete_samples": True})
-    assert again.json() == {"status": "withdrawn", "deleted_samples": 1}  # repeatable, and now erases
+    assert again.json()["deleted_samples"] == 1  # repeatable, and now erases
     assert not os.path.exists(s["feature_path"])
     assert client.post("/api/consents/999999/withdraw", json={"delete_samples": True}).status_code == 404
     assert client.post(f"/api/consents/{w['consent_id']}/withdraw", json={}).status_code == 422

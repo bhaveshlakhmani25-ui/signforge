@@ -75,6 +75,21 @@ class Sample(SQLModel, table=True):
     collection_round: int = 0
     raw_video_retained: bool = False
     provenance_note: str = ""
+    # Provenance fields for external datasets (e.g. INCLUDE) and multi-source traceability
+    dataset_name: str = ""
+    dataset_version: str = ""
+    dataset_license: str = ""
+    citation: str = ""
+    external_sample_id: str = ""
+    external_signer_id: str = ""
+    external_split: str = ""
+    # Model triage (redesign F2). Separate from review_status, which only a human reviewer sets.
+    triage_status: str = ""  # "" (not triaged) | auto_rejected | model_verified | needs_review
+    triage: dict = Field(default_factory=dict, sa_column=Column(JSON))  # the full /predict result, for the UI
+    match_confidence: Optional[float] = None  # calibrated probability of the claimed sign
+    predicted_sign: str = ""
+    is_near_duplicate: bool = False
+    audited: bool = False  # a model_verified clip also routed to a human (AUDIT_RATE)
     created_at: datetime = Field(default_factory=now)
 
 
