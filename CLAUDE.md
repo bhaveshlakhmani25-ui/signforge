@@ -181,6 +181,101 @@ The facts below are source-derived. Engineering decisions after each fact are ex
 
 Weights are starting defaults only. Make them configurable; explain each component in the UI; do not repeat the same class/signer task indefinitely. If there is no trained model/probability output yet, the queue may start from coverage/diversity gaps, but must label uncertainty as “not available yet” rather than faking it.
 
+### 3.8.1 Handoff Contract: Ranker I/O (Tashvi <-> Ruben & Bhavesh)
+
+Shared ranker function used identically by simulation harness (Ruben) and live UI queue (Bhavesh).
+**Rule:** Frozen test set NEVER feeds the ranker. Only approved, consenting samples from the training/unassigned pool are counted.
+
+**Ranker Inputs (per sign class):**
+```python
+{
+    "sign_class_id": int,
+    "gloss": str,
+    "approved_sample_count": int,      # Count of approved, consenting samples
+    "distinct_signer_count": int,      # Count of distinct signers with approved samples
+    "target_samples": int,             # Target samples per class (default 10, or max across classes)
+    "target_signers": int,             # Target distinct signers per class (default 3)
+    "uncertainty": float | None,       # 0.0 - 1.0; None if model not evaluated yet
+    "weights": {                       # Optional, default: 0.35 cov, 0.25 sig, 0.40 unc
+        "coverage": float,
+        "signer": float,
+        "uncertainty": float
+    }
+}
+```
+
+**Ranker Output Item (per sign class):**
+```json
+{
+  "sign_class_id": 1,
+  "gloss": "HELLO",
+  "priority": 0.82,
+  "coverage_gap": 0.90,
+  "signer_gap": 0.67,
+  "uncertainty": null,
+  "uncertainty_display": "Not evaluated yet",
+  "suggested_signer": "new_signer",
+  "reason": "High coverage gap (1/10 samples) and only 1 signer represented; model uncertainty not evaluated yet.",
+  "formula_version": "ranker-v1"
+}
+```
+**Formula:**
+- $\text{coverage\_gap} = \max(0.0, 1.0 - \frac{N_{\text{approved}}}{N_{\text{target}}})$
+- $\text{signer\_gap} = \max(0.0, 1.0 - \frac{S_{\text{distinct}}}{S_{\text{target}}})$
+- If `uncertainty` is available ($u \in [0, 1]$):
+  $$\text{priority} = w_{\text{cov}} \cdot \text{gap}_{\text{cov}} + w_{\text{sig}} \cdot \text{gap}_{\text{sig}} + w_{\text{unc}} \cdot u$$
+- If `uncertainty` is `None`:
+  $$\text{priority} = \frac{w_{\text{cov}} \cdot \text{gap}_{\text{cov}} + w_{\text{sig}} \cdot \text{gap}_{\text{sig}}}{w_{\text{cov}} + w_{\text{sig}}}$$
+- Normalization ensures `priority` is always in $[0.0, 1.0]$. Ties broken deterministically by alphabetical gloss.
+
+### 3.8.2 Handoff Contract: External Dataset Manifest (Akarshi <-> Tashvi)
+For Akarshi's INCLUDE import script writing to `data/external/<dataset_name>/`:
+`manifest.json`:
+```json
+{
+  "dataset_name": "INCLUDE",
+  "dataset_version": "1.0",
+  "license": "CC-BY-4.0",
+  "citation": "Sridhar et al., INCLUDE, ACM MM 2020",
+  "provenance_note": "Subset of 10-20 signs for low-resource ISL benchmark",
+  "feature_schema_version": "mp-holistic-75-xyz-v1",
+  "extractor": "mediapipe-holistic-python",
+  "extractor_model_sha": "e2dab611...",
+  "samples": [
+    {
+      "gloss": "HELLO",
+      "external_sample_id": "include_hello_001",
+      "external_signer_id": "signer_01",
+      "feature_file": "features/include_hello_001.npz",
+      "frame_count": 65,
+      "fps": 30.0,
+      "width": 1920,
+      "height": 1080,
+      "external_split": "train"
+    }
+  ]
+}
+```
+
+### 3.8.3 Handoff Contract: Benchmark Output Schema (Ruben <-> Bhavesh)
+Written by Ruben's benchmark script to `data/benchmark_results.json`:
+```json
+{
+  "benchmark_version": "v1",
+  "timestamp": "2026-10-31T14:00:00Z",
+  "dataset": "INCLUDE-subset",
+  "n_classes": 10,
+  "seeds": [42, 101, 2024],
+  "frozen_test_samples": 30,
+  "strategies": {
+    "ranker": { "steps": [0, 5, 10, 15, 20], "macro_f1_mean": [0.35, 0.52, 0.68, 0.76, 0.81], "macro_f1_std": [0.03, 0.04, 0.02, 0.02, 0.01] },
+    "balanced_round_robin": { "steps": [0, 5, 10, 15, 20], "macro_f1_mean": [0.35, 0.44, 0.55, 0.63, 0.70], "macro_f1_std": [0.03, 0.03, 0.03, 0.02, 0.02] },
+    "random": { "steps": [0, 5, 10, 15, 20], "macro_f1_mean": [0.35, 0.40, 0.48, 0.54, 0.61], "macro_f1_std": [0.03, 0.05, 0.04, 0.03, 0.03] }
+  },
+  "summary": "Active learning ranker beat both random (+20% F1) and balanced round-robin (+11% F1) across 3 seeds."
+}
+```
+
 ### 3.9 Competitor and adjacent-system landscape
 
 Use public documentation only. The comparison below is not proof that any organization lacks private or undisclosed capabilities. Phrase SIGNFORGE’s difference as our proposed workflow emphasis, not as “nobody else does this.”

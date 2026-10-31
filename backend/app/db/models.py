@@ -75,6 +75,14 @@ class Sample(SQLModel, table=True):
     collection_round: int = 0
     raw_video_retained: bool = False
     provenance_note: str = ""
+    # Provenance fields for external datasets (e.g. INCLUDE) and multi-source traceability
+    dataset_name: str = ""
+    dataset_version: str = ""
+    dataset_license: str = ""
+    citation: str = ""
+    external_sample_id: str = ""
+    external_signer_id: str = ""
+    external_split: str = ""
     created_at: datetime = Field(default_factory=now)
 
 

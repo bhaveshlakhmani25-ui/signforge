@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 
@@ -77,15 +79,25 @@ def create_consent(body: ConsentIn, session: Session = Depends(get_session)):
 
 
 @router.post("/consents/{consent_id}/withdraw")
-def withdraw_consent(consent_id: int, body: WithdrawIn, session: Session = Depends(get_session)):
-    """Stops all future use (capture, training, public replay). Optionally erases the samples recorded under it."""
+def withdraw_consent(consent_id: int, body: Optional[WithdrawIn] = None, delete_samples: Optional[bool] = None,
+                     session: Session = Depends(get_session)):
+    """Stops all future use (capture, training, export, public replay). Optionally erases the samples recorded under it.
+    The choice must be explicit: JSON body {"delete_samples": ...} or ?delete_samples=... query parameter."""
+    erase = body.delete_samples if body is not None else delete_samples
+    if erase is None:
+        raise HTTPException(422, "Say whether to also delete this consent's samples (delete_samples true or false).")
     consent = get_or_404(session, ConsentRecord, consent_id)
     consent.status = "withdrawn"
     session.add(consent)
-    deleted = 0
-    if body.delete_samples:
-        for s in session.exec(select(Sample).where(Sample.consent_id == consent_id)).all():
+    affected = session.exec(select(Sample).where(Sample.consent_id == consent_id)).all()
+    for s in affected:
+        if erase:
             delete_sample(session, s)
-            deleted += 1
+        elif "[CONSENT WITHDRAWN]" not in s.provenance_note:
+            # Not a review decision: consent status alone keeps these out of training, export and the ranker.
+            s.provenance_note = f"{s.provenance_note} [CONSENT WITHDRAWN]".strip()
+            session.add(s)
     session.commit()
-    return {"status": consent.status, "deleted_samples": deleted}
+    deleted = len(affected) if erase else 0
+    return {"status": consent.status, "consent_id": consent_id, "samples_affected": len(affected),
+            "samples_deleted": deleted, "deleted_samples": deleted}

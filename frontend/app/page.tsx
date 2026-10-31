@@ -13,7 +13,7 @@ const pct = (v?: number | null) => (v == null ? "not evaluated" : `${(v * 100).t
 const LOOP = [
   ["Consent", "built", "/capture"], ["Capture", "built", "/capture"], ["Automated check", "built", "/corpus"],
   ["Human review", "built", "/corpus"], ["Baseline model", "built", "/models"], ["Transfer learning", "blocked", "/models"],
-  ["Next-sample queue", "planned", null], ["Before/after benchmark", "planned", null], ["Corpus export", "planned", null],
+  ["Next-sample queue", "built", "/active-learning"], ["Before/after benchmark", "planned", null], ["Corpus export", "planned", null],
 ] as const;
 const LOOP_STYLE = { built: ["bg-teal/15 text-teal", "built"], blocked: ["bg-amber-100 text-amber-950", "blocked"],
                      planned: ["bg-lavender/50 text-indigo", "planned"] } as const;
