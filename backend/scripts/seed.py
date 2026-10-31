@@ -8,7 +8,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from fastapi.testclient import TestClient  # noqa: E402  in-process, so seeding goes through API validation
+import httpx
+try:
+    from fastapi.testclient import TestClient
+except Exception:
+    TestClient = None  # noqa: E402  in-process, so seeding goes through API validation
 
 from app.main import app  # noqa: E402
 
@@ -19,7 +23,16 @@ DEMO_SIGNERS, DEMO_PER_CLASS = 3, 3
 
 
 def main(demo: bool):
-    with TestClient(app) as c:
+    client_ctx = None
+    try:
+        r = httpx.get('http://127.0.0.1:8000/api/health', timeout=1.0)
+        if r.status_code == 200:
+            client_ctx = httpx.Client(base_url='http://127.0.0.1:8000', timeout=60.0)
+    except Exception:
+        pass
+    if client_ctx is None:
+        client_ctx = TestClient(app)
+    with client_ctx as c:
         projects = c.get("/api/projects").json()
         project = next((p for p in projects if p["name"] == "ISL demo"), None)
         if project is None:

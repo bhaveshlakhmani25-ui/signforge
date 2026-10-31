@@ -1,0 +1,4680 @@
+{
+  "schema_version": "signforge-benchmark-v1",
+  "generated_at": "2026-10-31T08:40:18.085794+00:00",
+  "dataset": {
+    "name": "INCLUDE",
+    "version": "v1.0",
+    "source_type": "external_dataset",
+    "language": "Indian Sign Language",
+    "sign_classes": [
+      "DOCTOR",
+      "EMERGENCY",
+      "FOOD",
+      "HELLO",
+      "HELP",
+      "NO",
+      "PAIN",
+      "THANK-YOU",
+      "WATER",
+      "YES"
+    ],
+    "num_classes": 10,
+    "total_samples": 180,
+    "samples_per_class": {
+      "DOCTOR": 18,
+      "EMERGENCY": 18,
+      "FOOD": 18,
+      "HELLO": 18,
+      "HELP": 18,
+      "NO": 18,
+      "PAIN": 18,
+      "THANK-YOU": 18,
+      "WATER": 18,
+      "YES": 18
+    }
+  },
+  "splits": {
+    "strategy": "official_include_test_split",
+    "signer_independent": false,
+    "signer_ids_available": false,
+    "official_split_reference": "INCLUDE/test.csv",
+    "frozen_test_hash": "04044a7be5771f0171e8b3804f83f7e5635f38bf58cee9f303c10be72541c3c9",
+    "train_pool_hash": "844563f2fd34e1cf488158346930f1acea596d77924d0bcc2148341a761347d8",
+    "test_sample_count": 40,
+    "candidate_pool_count": 120
+  },
+  "protocol": {
+    "strategies": [
+      "signforge",
+      "round_robin",
+      "random"
+    ],
+    "seeds": [
+      42,
+      43,
+      44
+    ],
+    "initial_samples_per_class": 2,
+    "num_rounds": 5,
+    "batch_size_per_round": 10,
+    "uncertainty_proxy": {
+      "method": "k_fold_cross_validation_error",
+      "num_folds": 3,
+      "metric": "1_minus_recall",
+      "missing_class_fallback": "null_unavailable",
+      "labeled_as_predictive_entropy": false
+    }
+  },
+  "model": {
+    "architecture": "GRUClassifier",
+    "feature_schema_version": "mp-holistic-75-xyz-v1",
+    "input_keypoints": 27,
+    "input_frames": 30,
+    "input_fps": 10.0,
+    "hidden_dim": 64,
+    "epochs": 60,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "pretrained": false
+  },
+  "summary": {
+    "initial_budget": 20,
+    "final_budget": 70,
+    "initial_metrics": {
+      "accuracy_mean": 0.45,
+      "accuracy_std": 0.054,
+      "macro_f1_mean": 0.4296,
+      "macro_f1_std": 0.0579
+    },
+    "by_strategy": {
+      "signforge": {
+        "final_accuracy_mean": 0.5417,
+        "final_accuracy_std": 0.0425,
+        "final_macro_f1_mean": 0.5025,
+        "final_macro_f1_std": 0.0651,
+        "macro_f1_gain_mean": 0.0729,
+        "samples_added": 50
+      },
+      "round_robin": {
+        "final_accuracy_mean": 0.5417,
+        "final_accuracy_std": 0.0425,
+        "final_macro_f1_mean": 0.5025,
+        "final_macro_f1_std": 0.0651,
+        "macro_f1_gain_mean": 0.0729,
+        "samples_added": 50
+      },
+      "random": {
+        "final_accuracy_mean": 0.475,
+        "final_accuracy_std": 0.054,
+        "final_macro_f1_mean": 0.3767,
+        "final_macro_f1_std": 0.0331,
+        "macro_f1_gain_mean": -0.0529,
+        "samples_added": 50
+      }
+    }
+  },
+  "curves": {
+    "x_axis_label": "Newly Acquired Samples",
+    "points_per_strategy": {
+      "signforge": [
+        {
+          "round": 0,
+          "acquired_samples": 0,
+          "total_training_samples": 20,
+          "accuracy_mean": 0.45,
+          "accuracy_std": 0.054,
+          "macro_f1_mean": 0.4296,
+          "macro_f1_std": 0.0579
+        },
+        {
+          "round": 1,
+          "acquired_samples": 10,
+          "total_training_samples": 30,
+          "accuracy_mean": 0.475,
+          "accuracy_std": 0.0354,
+          "macro_f1_mean": 0.4447,
+          "macro_f1_std": 0.0422
+        },
+        {
+          "round": 2,
+          "acquired_samples": 20,
+          "total_training_samples": 40,
+          "accuracy_mean": 0.5083,
+          "accuracy_std": 0.0425,
+          "macro_f1_mean": 0.4752,
+          "macro_f1_std": 0.0601
+        },
+        {
+          "round": 3,
+          "acquired_samples": 30,
+          "total_training_samples": 50,
+          "accuracy_mean": 0.5667,
+          "accuracy_std": 0.0236,
+          "macro_f1_mean": 0.5309,
+          "macro_f1_std": 0.0422
+        },
+        {
+          "round": 4,
+          "acquired_samples": 40,
+          "total_training_samples": 60,
+          "accuracy_mean": 0.5417,
+          "accuracy_std": 0.0312,
+          "macro_f1_mean": 0.4951,
+          "macro_f1_std": 0.0437
+        },
+        {
+          "round": 5,
+          "acquired_samples": 50,
+          "total_training_samples": 70,
+          "accuracy_mean": 0.5417,
+          "accuracy_std": 0.0425,
+          "macro_f1_mean": 0.5025,
+          "macro_f1_std": 0.0651
+        }
+      ],
+      "round_robin": [
+        {
+          "round": 0,
+          "acquired_samples": 0,
+          "total_training_samples": 20,
+          "accuracy_mean": 0.45,
+          "accuracy_std": 0.054,
+          "macro_f1_mean": 0.4296,
+          "macro_f1_std": 0.0579
+        },
+        {
+          "round": 1,
+          "acquired_samples": 10,
+          "total_training_samples": 30,
+          "accuracy_mean": 0.475,
+          "accuracy_std": 0.0354,
+          "macro_f1_mean": 0.4447,
+          "macro_f1_std": 0.0422
+        },
+        {
+          "round": 2,
+          "acquired_samples": 20,
+          "total_training_samples": 40,
+          "accuracy_mean": 0.5083,
+          "accuracy_std": 0.0425,
+          "macro_f1_mean": 0.4752,
+          "macro_f1_std": 0.0601
+        },
+        {
+          "round": 3,
+          "acquired_samples": 30,
+          "total_training_samples": 50,
+          "accuracy_mean": 0.5667,
+          "accuracy_std": 0.0236,
+          "macro_f1_mean": 0.5309,
+          "macro_f1_std": 0.0422
+        },
+        {
+          "round": 4,
+          "acquired_samples": 40,
+          "total_training_samples": 60,
+          "accuracy_mean": 0.5417,
+          "accuracy_std": 0.0312,
+          "macro_f1_mean": 0.4951,
+          "macro_f1_std": 0.0437
+        },
+        {
+          "round": 5,
+          "acquired_samples": 50,
+          "total_training_samples": 70,
+          "accuracy_mean": 0.5417,
+          "accuracy_std": 0.0425,
+          "macro_f1_mean": 0.5025,
+          "macro_f1_std": 0.0651
+        }
+      ],
+      "random": [
+        {
+          "round": 0,
+          "acquired_samples": 0,
+          "total_training_samples": 20,
+          "accuracy_mean": 0.45,
+          "accuracy_std": 0.054,
+          "macro_f1_mean": 0.4296,
+          "macro_f1_std": 0.0579
+        },
+        {
+          "round": 1,
+          "acquired_samples": 10,
+          "total_training_samples": 30,
+          "accuracy_mean": 0.3667,
+          "accuracy_std": 0.0589,
+          "macro_f1_mean": 0.2835,
+          "macro_f1_std": 0.0612
+        },
+        {
+          "round": 2,
+          "acquired_samples": 20,
+          "total_training_samples": 40,
+          "accuracy_mean": 0.4417,
+          "accuracy_std": 0.0825,
+          "macro_f1_mean": 0.3587,
+          "macro_f1_std": 0.077
+        },
+        {
+          "round": 3,
+          "acquired_samples": 30,
+          "total_training_samples": 50,
+          "accuracy_mean": 0.4167,
+          "accuracy_std": 0.0514,
+          "macro_f1_mean": 0.3147,
+          "macro_f1_std": 0.0388
+        },
+        {
+          "round": 4,
+          "acquired_samples": 40,
+          "total_training_samples": 60,
+          "accuracy_mean": 0.4083,
+          "accuracy_std": 0.0312,
+          "macro_f1_mean": 0.2969,
+          "macro_f1_std": 0.0295
+        },
+        {
+          "round": 5,
+          "acquired_samples": 50,
+          "total_training_samples": 70,
+          "accuracy_mean": 0.475,
+          "accuracy_std": 0.054,
+          "macro_f1_mean": 0.3767,
+          "macro_f1_std": 0.0331
+        }
+      ]
+    }
+  },
+  "runs": [
+    {
+      "seed": 42,
+      "strategy": "signforge",
+      "round": 0,
+      "total_samples": 20,
+      "acquired_samples": 0,
+      "accuracy": 0.525,
+      "macro_f1": 0.5088,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.75,
+          "recall": 0.75,
+          "f1": 0.75,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.3333,
+          "recall": 1.0,
+          "f1": 0.5,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.4,
+          "recall": 0.5,
+          "f1": 0.4444,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 0.8,
+          "recall": 1.0,
+          "f1": 0.8889,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 0.6667,
+          "recall": 0.5,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 1.0,
+          "recall": 0.25,
+          "f1": 0.4,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.1667,
+          "recall": 0.25,
+          "f1": 0.2,
+          "support": 4
+        }
+      },
+      "acquired_ids": []
+    },
+    {
+      "seed": 42,
+      "strategy": "round_robin",
+      "round": 0,
+      "total_samples": 20,
+      "acquired_samples": 0,
+      "accuracy": 0.525,
+      "macro_f1": 0.5088,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.75,
+          "recall": 0.75,
+          "f1": 0.75,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.3333,
+          "recall": 1.0,
+          "f1": 0.5,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.4,
+          "recall": 0.5,
+          "f1": 0.4444,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 0.8,
+          "recall": 1.0,
+          "f1": 0.8889,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 0.6667,
+          "recall": 0.5,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 1.0,
+          "recall": 0.25,
+          "f1": 0.4,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.1667,
+          "recall": 0.25,
+          "f1": 0.2,
+          "support": 4
+        }
+      },
+      "acquired_ids": []
+    },
+    {
+      "seed": 42,
+      "strategy": "random",
+      "round": 0,
+      "total_samples": 20,
+      "acquired_samples": 0,
+      "accuracy": 0.525,
+      "macro_f1": 0.5088,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.75,
+          "recall": 0.75,
+          "f1": 0.75,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.3333,
+          "recall": 1.0,
+          "f1": 0.5,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.4,
+          "recall": 0.5,
+          "f1": 0.4444,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 0.8,
+          "recall": 1.0,
+          "f1": 0.8889,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 0.6667,
+          "recall": 0.5,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 1.0,
+          "recall": 0.25,
+          "f1": 0.4,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.1667,
+          "recall": 0.25,
+          "f1": 0.2,
+          "support": 4
+        }
+      },
+      "acquired_ids": []
+    },
+    {
+      "seed": 42,
+      "strategy": "signforge",
+      "round": 1,
+      "total_samples": 30,
+      "acquired_samples": 10,
+      "accuracy": 0.5,
+      "macro_f1": 0.4577,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 1.0,
+          "recall": 0.75,
+          "f1": 0.8571,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.4286,
+          "recall": 0.75,
+          "f1": 0.5455,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.3636,
+          "recall": 1.0,
+          "f1": 0.5333,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.4286,
+          "recall": 0.75,
+          "f1": 0.5455,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 0.6667,
+          "recall": 0.5,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 1.0,
+          "recall": 0.75,
+          "f1": 0.8571,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_EMERGENCY_005",
+        "inc_FOOD_004",
+        "inc_HELP_004",
+        "inc_PAIN_004",
+        "inc_NO_004",
+        "inc_THANK-YOU_006",
+        "inc_YES_005",
+        "inc_DOCTOR_004",
+        "inc_HELLO_004",
+        "inc_WATER_004"
+      ]
+    },
+    {
+      "seed": 42,
+      "strategy": "signforge",
+      "round": 2,
+      "total_samples": 40,
+      "acquired_samples": 20,
+      "accuracy": 0.525,
+      "macro_f1": 0.4945,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 1.0,
+          "recall": 0.75,
+          "f1": 0.8571,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.5,
+          "recall": 0.75,
+          "f1": 0.6,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.4,
+          "recall": 1.0,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.4286,
+          "recall": 0.75,
+          "f1": 0.5455,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 0.6667,
+          "recall": 0.5,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 1.0,
+          "recall": 0.25,
+          "f1": 0.4,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 1.0,
+          "recall": 0.25,
+          "f1": 0.4,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_NO_005",
+        "inc_PAIN_005",
+        "inc_THANK-YOU_007",
+        "inc_YES_006",
+        "inc_EMERGENCY_006",
+        "inc_FOOD_005",
+        "inc_HELLO_006",
+        "inc_HELP_005",
+        "inc_WATER_005",
+        "inc_DOCTOR_005"
+      ]
+    },
+    {
+      "seed": 42,
+      "strategy": "signforge",
+      "round": 3,
+      "total_samples": 50,
+      "acquired_samples": 30,
+      "accuracy": 0.6,
+      "macro_f1": 0.5787,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 1.0,
+          "recall": 0.75,
+          "f1": 0.8571,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.8,
+          "recall": 1.0,
+          "f1": 0.8889,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.4,
+          "recall": 1.0,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.4286,
+          "recall": 0.75,
+          "f1": 0.5455,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 0.75,
+          "f1": 0.8571,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 1.0,
+          "recall": 0.25,
+          "f1": 0.4,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_FOOD_007",
+        "inc_PAIN_006",
+        "inc_THANK-YOU_008",
+        "inc_EMERGENCY_007",
+        "inc_HELLO_007",
+        "inc_HELP_006",
+        "inc_NO_006",
+        "inc_WATER_006",
+        "inc_DOCTOR_006",
+        "inc_YES_007"
+      ]
+    },
+    {
+      "seed": 42,
+      "strategy": "signforge",
+      "round": 4,
+      "total_samples": 60,
+      "acquired_samples": 40,
+      "accuracy": 0.575,
+      "macro_f1": 0.5559,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 1.0,
+          "recall": 0.75,
+          "f1": 0.8571,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.6667,
+          "recall": 1.0,
+          "f1": 0.8,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.4,
+          "recall": 0.5,
+          "f1": 0.4444,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 0.75,
+          "f1": 0.8571,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 1.0,
+          "recall": 0.25,
+          "f1": 0.4,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.6,
+          "recall": 0.75,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.1667,
+          "recall": 0.25,
+          "f1": 0.2,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_THANK-YOU_009",
+        "inc_HELP_007",
+        "inc_WATER_007",
+        "inc_HELLO_008",
+        "inc_PAIN_007",
+        "inc_YES_009",
+        "inc_DOCTOR_007",
+        "inc_FOOD_008",
+        "inc_EMERGENCY_008",
+        "inc_NO_007"
+      ]
+    },
+    {
+      "seed": 42,
+      "strategy": "signforge",
+      "round": 5,
+      "total_samples": 70,
+      "acquired_samples": 50,
+      "accuracy": 0.6,
+      "macro_f1": 0.5895,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.6667,
+          "recall": 1.0,
+          "f1": 0.8,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.4,
+          "recall": 1.0,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.4,
+          "recall": 0.5,
+          "f1": 0.4444,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 1.0,
+          "recall": 0.75,
+          "f1": 0.8571,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.2,
+          "recall": 0.25,
+          "f1": 0.2222,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_THANK-YOU_010",
+        "inc_YES_010",
+        "inc_FOOD_009",
+        "inc_HELLO_009",
+        "inc_PAIN_009",
+        "inc_WATER_009",
+        "inc_DOCTOR_008",
+        "inc_EMERGENCY_009",
+        "inc_HELP_008",
+        "inc_NO_008"
+      ]
+    },
+    {
+      "seed": 42,
+      "strategy": "round_robin",
+      "round": 1,
+      "total_samples": 30,
+      "acquired_samples": 10,
+      "accuracy": 0.5,
+      "macro_f1": 0.4577,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 1.0,
+          "recall": 0.75,
+          "f1": 0.8571,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.4286,
+          "recall": 0.75,
+          "f1": 0.5455,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.3636,
+          "recall": 1.0,
+          "f1": 0.5333,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.4286,
+          "recall": 0.75,
+          "f1": 0.5455,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 0.6667,
+          "recall": 0.5,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 1.0,
+          "recall": 0.75,
+          "f1": 0.8571,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_DOCTOR_004",
+        "inc_EMERGENCY_005",
+        "inc_FOOD_004",
+        "inc_HELLO_004",
+        "inc_HELP_004",
+        "inc_NO_004",
+        "inc_PAIN_004",
+        "inc_THANK-YOU_006",
+        "inc_WATER_004",
+        "inc_YES_005"
+      ]
+    },
+    {
+      "seed": 42,
+      "strategy": "round_robin",
+      "round": 2,
+      "total_samples": 40,
+      "acquired_samples": 20,
+      "accuracy": 0.525,
+      "macro_f1": 0.4945,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 1.0,
+          "recall": 0.75,
+          "f1": 0.8571,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.5,
+          "recall": 0.75,
+          "f1": 0.6,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.4,
+          "recall": 1.0,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.4286,
+          "recall": 0.75,
+          "f1": 0.5455,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 0.6667,
+          "recall": 0.5,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 1.0,
+          "recall": 0.25,
+          "f1": 0.4,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 1.0,
+          "recall": 0.25,
+          "f1": 0.4,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_DOCTOR_005",
+        "inc_EMERGENCY_006",
+        "inc_FOOD_005",
+        "inc_HELLO_006",
+        "inc_HELP_005",
+        "inc_NO_005",
+        "inc_PAIN_005",
+        "inc_THANK-YOU_007",
+        "inc_WATER_005",
+        "inc_YES_006"
+      ]
+    },
+    {
+      "seed": 42,
+      "strategy": "round_robin",
+      "round": 3,
+      "total_samples": 50,
+      "acquired_samples": 30,
+      "accuracy": 0.6,
+      "macro_f1": 0.5787,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 1.0,
+          "recall": 0.75,
+          "f1": 0.8571,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.8,
+          "recall": 1.0,
+          "f1": 0.8889,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.4,
+          "recall": 1.0,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.4286,
+          "recall": 0.75,
+          "f1": 0.5455,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 0.75,
+          "f1": 0.8571,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 1.0,
+          "recall": 0.25,
+          "f1": 0.4,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_DOCTOR_006",
+        "inc_EMERGENCY_007",
+        "inc_FOOD_007",
+        "inc_HELLO_007",
+        "inc_HELP_006",
+        "inc_NO_006",
+        "inc_PAIN_006",
+        "inc_THANK-YOU_008",
+        "inc_WATER_006",
+        "inc_YES_007"
+      ]
+    },
+    {
+      "seed": 42,
+      "strategy": "round_robin",
+      "round": 4,
+      "total_samples": 60,
+      "acquired_samples": 40,
+      "accuracy": 0.575,
+      "macro_f1": 0.5559,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 1.0,
+          "recall": 0.75,
+          "f1": 0.8571,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.6667,
+          "recall": 1.0,
+          "f1": 0.8,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.4,
+          "recall": 0.5,
+          "f1": 0.4444,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 0.75,
+          "f1": 0.8571,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 1.0,
+          "recall": 0.25,
+          "f1": 0.4,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.6,
+          "recall": 0.75,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.1667,
+          "recall": 0.25,
+          "f1": 0.2,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_DOCTOR_007",
+        "inc_EMERGENCY_008",
+        "inc_FOOD_008",
+        "inc_HELLO_008",
+        "inc_HELP_007",
+        "inc_NO_007",
+        "inc_PAIN_007",
+        "inc_THANK-YOU_009",
+        "inc_WATER_007",
+        "inc_YES_009"
+      ]
+    },
+    {
+      "seed": 42,
+      "strategy": "round_robin",
+      "round": 5,
+      "total_samples": 70,
+      "acquired_samples": 50,
+      "accuracy": 0.6,
+      "macro_f1": 0.5895,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.6667,
+          "recall": 1.0,
+          "f1": 0.8,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.4,
+          "recall": 1.0,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.4,
+          "recall": 0.5,
+          "f1": 0.4444,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 1.0,
+          "recall": 0.75,
+          "f1": 0.8571,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.2,
+          "recall": 0.25,
+          "f1": 0.2222,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_DOCTOR_008",
+        "inc_EMERGENCY_009",
+        "inc_FOOD_009",
+        "inc_HELLO_009",
+        "inc_HELP_008",
+        "inc_NO_008",
+        "inc_PAIN_009",
+        "inc_THANK-YOU_010",
+        "inc_WATER_009",
+        "inc_YES_010"
+      ]
+    },
+    {
+      "seed": 42,
+      "strategy": "random",
+      "round": 1,
+      "total_samples": 30,
+      "acquired_samples": 10,
+      "accuracy": 0.325,
+      "macro_f1": 0.2369,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 0.6667,
+          "recall": 0.5,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.4444,
+          "recall": 1.0,
+          "f1": 0.6154,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.4,
+          "recall": 0.5,
+          "f1": 0.4444,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 0.4,
+          "recall": 1.0,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.125,
+          "recall": 0.25,
+          "f1": 0.1667,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_FOOD_016",
+        "inc_FOOD_012",
+        "inc_FOOD_014",
+        "inc_THANK-YOU_016",
+        "inc_HELP_009",
+        "inc_YES_012",
+        "inc_NO_005",
+        "inc_NO_006",
+        "inc_HELP_008",
+        "inc_WATER_005"
+      ]
+    },
+    {
+      "seed": 42,
+      "strategy": "random",
+      "round": 2,
+      "total_samples": 40,
+      "acquired_samples": 20,
+      "accuracy": 0.425,
+      "macro_f1": 0.361,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 1.0,
+          "recall": 0.75,
+          "f1": 0.8571,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.3077,
+          "recall": 1.0,
+          "f1": 0.4706,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.4,
+          "recall": 0.5,
+          "f1": 0.4444,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 0.4,
+          "recall": 1.0,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 1.0,
+          "recall": 0.25,
+          "f1": 0.4,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.1667,
+          "recall": 0.25,
+          "f1": 0.2,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_FOOD_015",
+        "inc_PAIN_013",
+        "inc_DOCTOR_014",
+        "inc_YES_009",
+        "inc_EMERGENCY_009",
+        "inc_HELLO_004",
+        "inc_DOCTOR_015",
+        "inc_WATER_010",
+        "inc_PAIN_006",
+        "inc_NO_016"
+      ]
+    },
+    {
+      "seed": 42,
+      "strategy": "random",
+      "round": 3,
+      "total_samples": 50,
+      "acquired_samples": 30,
+      "accuracy": 0.425,
+      "macro_f1": 0.2836,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 0.5714,
+          "recall": 1.0,
+          "f1": 0.7273,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.3077,
+          "recall": 1.0,
+          "f1": 0.4706,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 0.4,
+          "recall": 1.0,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 1.0,
+          "recall": 0.25,
+          "f1": 0.4,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1": 0.6667,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_HELP_012",
+        "inc_EMERGENCY_011",
+        "inc_DOCTOR_004",
+        "inc_YES_011",
+        "inc_FOOD_017",
+        "inc_FOOD_009",
+        "inc_DOCTOR_012",
+        "inc_YES_016",
+        "inc_WATER_014",
+        "inc_YES_015"
+      ]
+    },
+    {
+      "seed": 42,
+      "strategy": "random",
+      "round": 4,
+      "total_samples": 60,
+      "acquired_samples": 40,
+      "accuracy": 0.4,
+      "macro_f1": 0.268,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 0.6,
+          "recall": 0.75,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.3077,
+          "recall": 1.0,
+          "f1": 0.4706,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 0.4,
+          "recall": 1.0,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 1.0,
+          "recall": 0.25,
+          "f1": 0.4,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.4,
+          "recall": 1.0,
+          "f1": 0.5714,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_PAIN_012",
+        "inc_THANK-YOU_017",
+        "inc_NO_007",
+        "inc_PAIN_004",
+        "inc_NO_009",
+        "inc_FOOD_004",
+        "inc_DOCTOR_007",
+        "inc_THANK-YOU_006",
+        "inc_HELP_016",
+        "inc_NO_012"
+      ]
+    },
+    {
+      "seed": 42,
+      "strategy": "random",
+      "round": 5,
+      "total_samples": 70,
+      "acquired_samples": 50,
+      "accuracy": 0.5,
+      "macro_f1": 0.3687,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 0.5714,
+          "recall": 1.0,
+          "f1": 0.7273,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.4,
+          "recall": 1.0,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 0.4,
+          "recall": 1.0,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 1.0,
+          "recall": 0.25,
+          "f1": 0.4,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.75,
+          "recall": 0.75,
+          "f1": 0.75,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1": 0.6667,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_WATER_011",
+        "inc_HELLO_011",
+        "inc_WATER_007",
+        "inc_EMERGENCY_007",
+        "inc_THANK-YOU_008",
+        "inc_PAIN_016",
+        "inc_DOCTOR_008",
+        "inc_THANK-YOU_012",
+        "inc_FOOD_008",
+        "inc_NO_017"
+      ]
+    },
+    {
+      "seed": 43,
+      "strategy": "signforge",
+      "round": 0,
+      "total_samples": 20,
+      "acquired_samples": 0,
+      "accuracy": 0.425,
+      "macro_f1": 0.4076,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 0.4,
+          "recall": 0.5,
+          "f1": 0.4444,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.6,
+          "recall": 0.75,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.4286,
+          "recall": 0.75,
+          "f1": 0.5455,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.3333,
+          "recall": 0.25,
+          "f1": 0.2857,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 0.25,
+          "f1": 0.4,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 0.5,
+          "recall": 0.25,
+          "f1": 0.3333,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.3333,
+          "recall": 0.5,
+          "f1": 0.4,
+          "support": 4
+        }
+      },
+      "acquired_ids": []
+    },
+    {
+      "seed": 43,
+      "strategy": "round_robin",
+      "round": 0,
+      "total_samples": 20,
+      "acquired_samples": 0,
+      "accuracy": 0.425,
+      "macro_f1": 0.4076,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 0.4,
+          "recall": 0.5,
+          "f1": 0.4444,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.6,
+          "recall": 0.75,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.4286,
+          "recall": 0.75,
+          "f1": 0.5455,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.3333,
+          "recall": 0.25,
+          "f1": 0.2857,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 0.25,
+          "f1": 0.4,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 0.5,
+          "recall": 0.25,
+          "f1": 0.3333,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.3333,
+          "recall": 0.5,
+          "f1": 0.4,
+          "support": 4
+        }
+      },
+      "acquired_ids": []
+    },
+    {
+      "seed": 43,
+      "strategy": "random",
+      "round": 0,
+      "total_samples": 20,
+      "acquired_samples": 0,
+      "accuracy": 0.425,
+      "macro_f1": 0.4076,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 0.4,
+          "recall": 0.5,
+          "f1": 0.4444,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.6,
+          "recall": 0.75,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.4286,
+          "recall": 0.75,
+          "f1": 0.5455,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.3333,
+          "recall": 0.25,
+          "f1": 0.2857,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 0.25,
+          "f1": 0.4,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 0.5,
+          "recall": 0.25,
+          "f1": 0.3333,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.3333,
+          "recall": 0.5,
+          "f1": 0.4,
+          "support": 4
+        }
+      },
+      "acquired_ids": []
+    },
+    {
+      "seed": 43,
+      "strategy": "signforge",
+      "round": 1,
+      "total_samples": 30,
+      "acquired_samples": 10,
+      "accuracy": 0.5,
+      "macro_f1": 0.4886,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 0.6,
+          "recall": 0.75,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.75,
+          "recall": 0.75,
+          "f1": 0.75,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.4286,
+          "recall": 0.75,
+          "f1": 0.5455,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.4,
+          "recall": 0.5,
+          "f1": 0.4444,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 0.75,
+          "f1": 0.8571,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 1.0,
+          "recall": 0.25,
+          "f1": 0.4,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.2,
+          "recall": 0.25,
+          "f1": 0.2222,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_PAIN_004",
+        "inc_WATER_005",
+        "inc_EMERGENCY_004",
+        "inc_THANK-YOU_004",
+        "inc_YES_004",
+        "inc_DOCTOR_004",
+        "inc_FOOD_004",
+        "inc_HELLO_004",
+        "inc_HELP_004",
+        "inc_NO_004"
+      ]
+    },
+    {
+      "seed": 43,
+      "strategy": "signforge",
+      "round": 2,
+      "total_samples": 40,
+      "acquired_samples": 20,
+      "accuracy": 0.55,
+      "macro_f1": 0.5372,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.8,
+          "recall": 1.0,
+          "f1": 0.8889,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.4,
+          "recall": 0.5,
+          "f1": 0.4444,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 0.75,
+          "f1": 0.8571,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.1429,
+          "recall": 0.25,
+          "f1": 0.1818,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_PAIN_006",
+        "inc_THANK-YOU_006",
+        "inc_WATER_006",
+        "inc_EMERGENCY_006",
+        "inc_FOOD_005",
+        "inc_HELLO_006",
+        "inc_YES_005",
+        "inc_DOCTOR_005",
+        "inc_HELP_005",
+        "inc_NO_005"
+      ]
+    },
+    {
+      "seed": 43,
+      "strategy": "signforge",
+      "round": 3,
+      "total_samples": 50,
+      "acquired_samples": 30,
+      "accuracy": 0.55,
+      "macro_f1": 0.5379,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.375,
+          "recall": 0.75,
+          "f1": 0.5,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.4286,
+          "recall": 0.75,
+          "f1": 0.5455,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_WATER_007",
+        "inc_PAIN_007",
+        "inc_THANK-YOU_007",
+        "inc_YES_006",
+        "inc_FOOD_006",
+        "inc_HELLO_007",
+        "inc_EMERGENCY_007",
+        "inc_HELP_006",
+        "inc_DOCTOR_007",
+        "inc_NO_006"
+      ]
+    },
+    {
+      "seed": 43,
+      "strategy": "signforge",
+      "round": 4,
+      "total_samples": 60,
+      "acquired_samples": 40,
+      "accuracy": 0.5,
+      "macro_f1": 0.455,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 0.5,
+          "recall": 0.5,
+          "f1": 0.5,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.8,
+          "recall": 1.0,
+          "f1": 0.8889,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.4444,
+          "recall": 1.0,
+          "f1": 0.6154,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.4286,
+          "recall": 0.75,
+          "f1": 0.5455,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 0.5,
+          "recall": 0.25,
+          "f1": 0.3333,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_THANK-YOU_009",
+        "inc_FOOD_007",
+        "inc_HELP_008",
+        "inc_PAIN_008",
+        "inc_YES_007",
+        "inc_EMERGENCY_008",
+        "inc_HELLO_008",
+        "inc_WATER_008",
+        "inc_DOCTOR_008",
+        "inc_NO_007"
+      ]
+    },
+    {
+      "seed": 43,
+      "strategy": "signforge",
+      "round": 5,
+      "total_samples": 70,
+      "acquired_samples": 50,
+      "accuracy": 0.525,
+      "macro_f1": 0.485,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 0.6,
+          "recall": 0.75,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.4,
+          "recall": 1.0,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.4286,
+          "recall": 0.75,
+          "f1": 0.5455,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 1.0,
+          "recall": 0.25,
+          "f1": 0.4,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_THANK-YOU_010",
+        "inc_WATER_009",
+        "inc_HELP_009",
+        "inc_YES_008",
+        "inc_DOCTOR_009",
+        "inc_EMERGENCY_010",
+        "inc_FOOD_008",
+        "inc_PAIN_009",
+        "inc_HELLO_009",
+        "inc_NO_008"
+      ]
+    },
+    {
+      "seed": 43,
+      "strategy": "round_robin",
+      "round": 1,
+      "total_samples": 30,
+      "acquired_samples": 10,
+      "accuracy": 0.5,
+      "macro_f1": 0.4886,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 0.6,
+          "recall": 0.75,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.75,
+          "recall": 0.75,
+          "f1": 0.75,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.4286,
+          "recall": 0.75,
+          "f1": 0.5455,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.4,
+          "recall": 0.5,
+          "f1": 0.4444,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 0.75,
+          "f1": 0.8571,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 1.0,
+          "recall": 0.25,
+          "f1": 0.4,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.2,
+          "recall": 0.25,
+          "f1": 0.2222,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_DOCTOR_004",
+        "inc_EMERGENCY_004",
+        "inc_FOOD_004",
+        "inc_HELLO_004",
+        "inc_HELP_004",
+        "inc_NO_004",
+        "inc_PAIN_004",
+        "inc_THANK-YOU_004",
+        "inc_WATER_005",
+        "inc_YES_004"
+      ]
+    },
+    {
+      "seed": 43,
+      "strategy": "round_robin",
+      "round": 2,
+      "total_samples": 40,
+      "acquired_samples": 20,
+      "accuracy": 0.55,
+      "macro_f1": 0.5372,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.8,
+          "recall": 1.0,
+          "f1": 0.8889,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.4,
+          "recall": 0.5,
+          "f1": 0.4444,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 0.75,
+          "f1": 0.8571,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.1429,
+          "recall": 0.25,
+          "f1": 0.1818,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_DOCTOR_005",
+        "inc_EMERGENCY_006",
+        "inc_FOOD_005",
+        "inc_HELLO_006",
+        "inc_HELP_005",
+        "inc_NO_005",
+        "inc_PAIN_006",
+        "inc_THANK-YOU_006",
+        "inc_WATER_006",
+        "inc_YES_005"
+      ]
+    },
+    {
+      "seed": 43,
+      "strategy": "round_robin",
+      "round": 3,
+      "total_samples": 50,
+      "acquired_samples": 30,
+      "accuracy": 0.55,
+      "macro_f1": 0.5379,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.375,
+          "recall": 0.75,
+          "f1": 0.5,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.4286,
+          "recall": 0.75,
+          "f1": 0.5455,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_DOCTOR_007",
+        "inc_EMERGENCY_007",
+        "inc_FOOD_006",
+        "inc_HELLO_007",
+        "inc_HELP_006",
+        "inc_NO_006",
+        "inc_PAIN_007",
+        "inc_THANK-YOU_007",
+        "inc_WATER_007",
+        "inc_YES_006"
+      ]
+    },
+    {
+      "seed": 43,
+      "strategy": "round_robin",
+      "round": 4,
+      "total_samples": 60,
+      "acquired_samples": 40,
+      "accuracy": 0.5,
+      "macro_f1": 0.455,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 0.5,
+          "recall": 0.5,
+          "f1": 0.5,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.8,
+          "recall": 1.0,
+          "f1": 0.8889,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.4444,
+          "recall": 1.0,
+          "f1": 0.6154,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.4286,
+          "recall": 0.75,
+          "f1": 0.5455,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 0.5,
+          "recall": 0.25,
+          "f1": 0.3333,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_DOCTOR_008",
+        "inc_EMERGENCY_008",
+        "inc_FOOD_007",
+        "inc_HELLO_008",
+        "inc_HELP_008",
+        "inc_NO_007",
+        "inc_PAIN_008",
+        "inc_THANK-YOU_009",
+        "inc_WATER_008",
+        "inc_YES_007"
+      ]
+    },
+    {
+      "seed": 43,
+      "strategy": "round_robin",
+      "round": 5,
+      "total_samples": 70,
+      "acquired_samples": 50,
+      "accuracy": 0.525,
+      "macro_f1": 0.485,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 0.6,
+          "recall": 0.75,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.4,
+          "recall": 1.0,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.4286,
+          "recall": 0.75,
+          "f1": 0.5455,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 1.0,
+          "recall": 0.25,
+          "f1": 0.4,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_DOCTOR_009",
+        "inc_EMERGENCY_010",
+        "inc_FOOD_008",
+        "inc_HELLO_009",
+        "inc_HELP_009",
+        "inc_NO_008",
+        "inc_PAIN_009",
+        "inc_THANK-YOU_010",
+        "inc_WATER_009",
+        "inc_YES_008"
+      ]
+    },
+    {
+      "seed": 43,
+      "strategy": "random",
+      "round": 1,
+      "total_samples": 30,
+      "acquired_samples": 10,
+      "accuracy": 0.45,
+      "macro_f1": 0.37,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 0.6667,
+          "recall": 0.5,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.3333,
+          "recall": 0.75,
+          "f1": 0.4615,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 0.75,
+          "f1": 0.8571,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 0.6667,
+          "recall": 0.5,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.4,
+          "recall": 1.0,
+          "f1": 0.5714,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_NO_010",
+        "inc_PAIN_015",
+        "inc_HELP_014",
+        "inc_YES_010",
+        "inc_THANK-YOU_014",
+        "inc_WATER_015",
+        "inc_THANK-YOU_013",
+        "inc_WATER_013",
+        "inc_THANK-YOU_010",
+        "inc_FOOD_014"
+      ]
+    },
+    {
+      "seed": 43,
+      "strategy": "random",
+      "round": 2,
+      "total_samples": 40,
+      "acquired_samples": 20,
+      "accuracy": 0.55,
+      "macro_f1": 0.4518,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 1.0,
+          "recall": 0.75,
+          "f1": 0.8571,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.3333,
+          "recall": 1.0,
+          "f1": 0.5,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 0.4286,
+          "recall": 0.75,
+          "f1": 0.5455,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.4444,
+          "recall": 1.0,
+          "f1": 0.6154,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_FOOD_015",
+        "inc_PAIN_007",
+        "inc_EMERGENCY_007",
+        "inc_YES_005",
+        "inc_EMERGENCY_010",
+        "inc_HELP_011",
+        "inc_PAIN_014",
+        "inc_WATER_005",
+        "inc_FOOD_006",
+        "inc_EMERGENCY_016"
+      ]
+    },
+    {
+      "seed": 43,
+      "strategy": "random",
+      "round": 3,
+      "total_samples": 50,
+      "acquired_samples": 30,
+      "accuracy": 0.475,
+      "macro_f1": 0.3694,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.5,
+          "recall": 0.75,
+          "f1": 0.6,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.3636,
+          "recall": 1.0,
+          "f1": 0.5333,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 0.4286,
+          "recall": 0.75,
+          "f1": 0.5455,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 1.0,
+          "recall": 0.25,
+          "f1": 0.4,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.4444,
+          "recall": 1.0,
+          "f1": 0.6154,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_NO_012",
+        "inc_EMERGENCY_008",
+        "inc_PAIN_012",
+        "inc_FOOD_009",
+        "inc_PAIN_006",
+        "inc_HELP_004",
+        "inc_PAIN_013",
+        "inc_EMERGENCY_012",
+        "inc_NO_016",
+        "inc_YES_016"
+      ]
+    },
+    {
+      "seed": 43,
+      "strategy": "random",
+      "round": 4,
+      "total_samples": 60,
+      "acquired_samples": 40,
+      "accuracy": 0.45,
+      "macro_f1": 0.3373,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.4286,
+          "recall": 0.75,
+          "f1": 0.5455,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 0.4286,
+          "recall": 0.75,
+          "f1": 0.5455,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.4444,
+          "recall": 1.0,
+          "f1": 0.6154,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_DOCTOR_011",
+        "inc_HELP_008",
+        "inc_DOCTOR_005",
+        "inc_WATER_007",
+        "inc_NO_008",
+        "inc_HELLO_009",
+        "inc_PAIN_016",
+        "inc_HELP_010",
+        "inc_HELLO_013",
+        "inc_PAIN_004"
+      ]
+    },
+    {
+      "seed": 43,
+      "strategy": "random",
+      "round": 5,
+      "total_samples": 70,
+      "acquired_samples": 50,
+      "accuracy": 0.525,
+      "macro_f1": 0.4206,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.4286,
+          "recall": 0.75,
+          "f1": 0.5455,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 0.4286,
+          "recall": 0.75,
+          "f1": 0.5455,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.375,
+          "recall": 0.75,
+          "f1": 0.5,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.4444,
+          "recall": 1.0,
+          "f1": 0.6154,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_DOCTOR_016",
+        "inc_WATER_017",
+        "inc_WATER_014",
+        "inc_DOCTOR_010",
+        "inc_EMERGENCY_014",
+        "inc_DOCTOR_004",
+        "inc_YES_006",
+        "inc_FOOD_005",
+        "inc_YES_009",
+        "inc_EMERGENCY_017"
+      ]
+    },
+    {
+      "seed": 44,
+      "strategy": "signforge",
+      "round": 0,
+      "total_samples": 20,
+      "acquired_samples": 0,
+      "accuracy": 0.4,
+      "macro_f1": 0.3723,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 0.4,
+          "recall": 0.5,
+          "f1": 0.4444,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.75,
+          "recall": 0.75,
+          "f1": 0.75,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.25,
+          "recall": 0.5,
+          "f1": 0.3333,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.3333,
+          "recall": 0.75,
+          "f1": 0.4615,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 0.5,
+          "recall": 0.25,
+          "f1": 0.3333,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 1.0,
+          "recall": 0.25,
+          "f1": 0.4,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        }
+      },
+      "acquired_ids": []
+    },
+    {
+      "seed": 44,
+      "strategy": "round_robin",
+      "round": 0,
+      "total_samples": 20,
+      "acquired_samples": 0,
+      "accuracy": 0.4,
+      "macro_f1": 0.3723,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 0.4,
+          "recall": 0.5,
+          "f1": 0.4444,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.75,
+          "recall": 0.75,
+          "f1": 0.75,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.25,
+          "recall": 0.5,
+          "f1": 0.3333,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.3333,
+          "recall": 0.75,
+          "f1": 0.4615,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 0.5,
+          "recall": 0.25,
+          "f1": 0.3333,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 1.0,
+          "recall": 0.25,
+          "f1": 0.4,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        }
+      },
+      "acquired_ids": []
+    },
+    {
+      "seed": 44,
+      "strategy": "random",
+      "round": 0,
+      "total_samples": 20,
+      "acquired_samples": 0,
+      "accuracy": 0.4,
+      "macro_f1": 0.3723,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 0.4,
+          "recall": 0.5,
+          "f1": 0.4444,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.75,
+          "recall": 0.75,
+          "f1": 0.75,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.25,
+          "recall": 0.5,
+          "f1": 0.3333,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.3333,
+          "recall": 0.75,
+          "f1": 0.4615,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 0.5,
+          "recall": 0.25,
+          "f1": 0.3333,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 1.0,
+          "recall": 0.25,
+          "f1": 0.4,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        }
+      },
+      "acquired_ids": []
+    },
+    {
+      "seed": 44,
+      "strategy": "signforge",
+      "round": 1,
+      "total_samples": 30,
+      "acquired_samples": 10,
+      "accuracy": 0.425,
+      "macro_f1": 0.3878,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 0.75,
+          "recall": 0.75,
+          "f1": 0.75,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.6,
+          "recall": 0.75,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.25,
+          "recall": 0.5,
+          "f1": 0.3333,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.3333,
+          "recall": 0.75,
+          "f1": 0.4615,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_HELLO_004",
+        "inc_NO_004",
+        "inc_THANK-YOU_004",
+        "inc_WATER_004",
+        "inc_YES_004",
+        "inc_DOCTOR_005",
+        "inc_PAIN_004",
+        "inc_EMERGENCY_005",
+        "inc_FOOD_004",
+        "inc_HELP_005"
+      ]
+    },
+    {
+      "seed": 44,
+      "strategy": "signforge",
+      "round": 2,
+      "total_samples": 40,
+      "acquired_samples": 20,
+      "accuracy": 0.45,
+      "macro_f1": 0.3938,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 0.6667,
+          "recall": 0.5,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.6,
+          "recall": 0.75,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.3333,
+          "recall": 0.75,
+          "f1": 0.4615,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 0.6667,
+          "recall": 0.5,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_YES_005",
+        "inc_EMERGENCY_006",
+        "inc_FOOD_005",
+        "inc_HELLO_005",
+        "inc_HELP_007",
+        "inc_NO_005",
+        "inc_PAIN_005",
+        "inc_THANK-YOU_005",
+        "inc_WATER_006",
+        "inc_DOCTOR_006"
+      ]
+    },
+    {
+      "seed": 44,
+      "strategy": "signforge",
+      "round": 3,
+      "total_samples": 50,
+      "acquired_samples": 30,
+      "accuracy": 0.55,
+      "macro_f1": 0.476,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 0.6667,
+          "recall": 0.5,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.5,
+          "recall": 0.75,
+          "f1": 0.6,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.3333,
+          "recall": 0.75,
+          "f1": 0.4615,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.8,
+          "recall": 1.0,
+          "f1": 0.8889,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 0.6667,
+          "recall": 0.5,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_FOOD_006",
+        "inc_YES_006",
+        "inc_HELP_008",
+        "inc_HELLO_006",
+        "inc_NO_006",
+        "inc_PAIN_006",
+        "inc_THANK-YOU_006",
+        "inc_WATER_007",
+        "inc_DOCTOR_007",
+        "inc_EMERGENCY_007"
+      ]
+    },
+    {
+      "seed": 44,
+      "strategy": "signforge",
+      "round": 4,
+      "total_samples": 60,
+      "acquired_samples": 40,
+      "accuracy": 0.55,
+      "macro_f1": 0.4745,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 0.5,
+          "recall": 0.5,
+          "f1": 0.5,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.4286,
+          "recall": 0.75,
+          "f1": 0.5455,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.3333,
+          "recall": 0.75,
+          "f1": 0.4615,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 0.6667,
+          "recall": 0.5,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_HELP_009",
+        "inc_YES_007",
+        "inc_FOOD_007",
+        "inc_PAIN_007",
+        "inc_EMERGENCY_008",
+        "inc_THANK-YOU_007",
+        "inc_WATER_008",
+        "inc_DOCTOR_008",
+        "inc_HELLO_009",
+        "inc_NO_007"
+      ]
+    },
+    {
+      "seed": 44,
+      "strategy": "signforge",
+      "round": 5,
+      "total_samples": 70,
+      "acquired_samples": 50,
+      "accuracy": 0.5,
+      "macro_f1": 0.433,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 0.4,
+          "recall": 0.5,
+          "f1": 0.4444,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.4286,
+          "recall": 0.75,
+          "f1": 0.5455,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.3333,
+          "recall": 0.75,
+          "f1": 0.4615,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 0.5,
+          "recall": 0.25,
+          "f1": 0.3333,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.4286,
+          "recall": 0.75,
+          "f1": 0.5455,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_THANK-YOU_008",
+        "inc_HELP_010",
+        "inc_YES_009",
+        "inc_FOOD_008",
+        "inc_HELLO_010",
+        "inc_NO_008",
+        "inc_WATER_009",
+        "inc_DOCTOR_009",
+        "inc_EMERGENCY_009",
+        "inc_PAIN_008"
+      ]
+    },
+    {
+      "seed": 44,
+      "strategy": "round_robin",
+      "round": 1,
+      "total_samples": 30,
+      "acquired_samples": 10,
+      "accuracy": 0.425,
+      "macro_f1": 0.3878,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 0.75,
+          "recall": 0.75,
+          "f1": 0.75,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.6,
+          "recall": 0.75,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.25,
+          "recall": 0.5,
+          "f1": 0.3333,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.3333,
+          "recall": 0.75,
+          "f1": 0.4615,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_DOCTOR_005",
+        "inc_EMERGENCY_005",
+        "inc_FOOD_004",
+        "inc_HELLO_004",
+        "inc_HELP_005",
+        "inc_NO_004",
+        "inc_PAIN_004",
+        "inc_THANK-YOU_004",
+        "inc_WATER_004",
+        "inc_YES_004"
+      ]
+    },
+    {
+      "seed": 44,
+      "strategy": "round_robin",
+      "round": 2,
+      "total_samples": 40,
+      "acquired_samples": 20,
+      "accuracy": 0.45,
+      "macro_f1": 0.3938,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 0.6667,
+          "recall": 0.5,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.6,
+          "recall": 0.75,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.3333,
+          "recall": 0.75,
+          "f1": 0.4615,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 0.6667,
+          "recall": 0.5,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_DOCTOR_006",
+        "inc_EMERGENCY_006",
+        "inc_FOOD_005",
+        "inc_HELLO_005",
+        "inc_HELP_007",
+        "inc_NO_005",
+        "inc_PAIN_005",
+        "inc_THANK-YOU_005",
+        "inc_WATER_006",
+        "inc_YES_005"
+      ]
+    },
+    {
+      "seed": 44,
+      "strategy": "round_robin",
+      "round": 3,
+      "total_samples": 50,
+      "acquired_samples": 30,
+      "accuracy": 0.55,
+      "macro_f1": 0.476,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 0.6667,
+          "recall": 0.5,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.5,
+          "recall": 0.75,
+          "f1": 0.6,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.3333,
+          "recall": 0.75,
+          "f1": 0.4615,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.8,
+          "recall": 1.0,
+          "f1": 0.8889,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 0.6667,
+          "recall": 0.5,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_DOCTOR_007",
+        "inc_EMERGENCY_007",
+        "inc_FOOD_006",
+        "inc_HELLO_006",
+        "inc_HELP_008",
+        "inc_NO_006",
+        "inc_PAIN_006",
+        "inc_THANK-YOU_006",
+        "inc_WATER_007",
+        "inc_YES_006"
+      ]
+    },
+    {
+      "seed": 44,
+      "strategy": "round_robin",
+      "round": 4,
+      "total_samples": 60,
+      "acquired_samples": 40,
+      "accuracy": 0.55,
+      "macro_f1": 0.4745,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 0.5,
+          "recall": 0.5,
+          "f1": 0.5,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.4286,
+          "recall": 0.75,
+          "f1": 0.5455,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.3333,
+          "recall": 0.75,
+          "f1": 0.4615,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 0.6667,
+          "recall": 0.5,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_DOCTOR_008",
+        "inc_EMERGENCY_008",
+        "inc_FOOD_007",
+        "inc_HELLO_009",
+        "inc_HELP_009",
+        "inc_NO_007",
+        "inc_PAIN_007",
+        "inc_THANK-YOU_007",
+        "inc_WATER_008",
+        "inc_YES_007"
+      ]
+    },
+    {
+      "seed": 44,
+      "strategy": "round_robin",
+      "round": 5,
+      "total_samples": 70,
+      "acquired_samples": 50,
+      "accuracy": 0.5,
+      "macro_f1": 0.433,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 0.4,
+          "recall": 0.5,
+          "f1": 0.4444,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.4286,
+          "recall": 0.75,
+          "f1": 0.5455,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.3333,
+          "recall": 0.75,
+          "f1": 0.4615,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 0.5,
+          "recall": 0.25,
+          "f1": 0.3333,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.4286,
+          "recall": 0.75,
+          "f1": 0.5455,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_DOCTOR_009",
+        "inc_EMERGENCY_009",
+        "inc_FOOD_008",
+        "inc_HELLO_010",
+        "inc_HELP_010",
+        "inc_NO_008",
+        "inc_PAIN_008",
+        "inc_THANK-YOU_008",
+        "inc_WATER_009",
+        "inc_YES_009"
+      ]
+    },
+    {
+      "seed": 44,
+      "strategy": "random",
+      "round": 1,
+      "total_samples": 30,
+      "acquired_samples": 10,
+      "accuracy": 0.325,
+      "macro_f1": 0.2435,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 0.5,
+          "recall": 0.5,
+          "f1": 0.5,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.2222,
+          "recall": 1.0,
+          "f1": 0.3636,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "NO": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 0.5,
+          "recall": 0.25,
+          "f1": 0.3333,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.4,
+          "recall": 1.0,
+          "f1": 0.5714,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_DOCTOR_012",
+        "inc_PAIN_008",
+        "inc_YES_010",
+        "inc_EMERGENCY_016",
+        "inc_HELP_017",
+        "inc_YES_011",
+        "inc_EMERGENCY_005",
+        "inc_NO_011",
+        "inc_EMERGENCY_012",
+        "inc_EMERGENCY_013"
+      ]
+    },
+    {
+      "seed": 44,
+      "strategy": "random",
+      "round": 2,
+      "total_samples": 40,
+      "acquired_samples": 20,
+      "accuracy": 0.35,
+      "macro_f1": 0.2632,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 1.0,
+          "recall": 0.25,
+          "f1": 0.4,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.3333,
+          "recall": 1.0,
+          "f1": 0.5,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.4444,
+          "recall": 1.0,
+          "f1": 0.6154,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.4286,
+          "recall": 0.75,
+          "f1": 0.5455,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 0.6667,
+          "recall": 0.5,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_HELLO_012",
+        "inc_HELLO_005",
+        "inc_YES_006",
+        "inc_YES_007",
+        "inc_THANK-YOU_008",
+        "inc_WATER_010",
+        "inc_HELLO_015",
+        "inc_HELP_005",
+        "inc_FOOD_004",
+        "inc_FOOD_010"
+      ]
+    },
+    {
+      "seed": 44,
+      "strategy": "random",
+      "round": 3,
+      "total_samples": 50,
+      "acquired_samples": 30,
+      "accuracy": 0.35,
+      "macro_f1": 0.2912,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 1.0,
+          "recall": 0.25,
+          "f1": 0.4,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.3333,
+          "recall": 0.75,
+          "f1": 0.4615,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 0.3636,
+          "recall": 1.0,
+          "f1": 0.5333,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.4286,
+          "recall": 0.75,
+          "f1": 0.5455,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 1.0,
+          "recall": 0.25,
+          "f1": 0.4,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 0.6667,
+          "recall": 0.5,
+          "f1": 0.5714,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_FOOD_007",
+        "inc_NO_006",
+        "inc_FOOD_006",
+        "inc_WATER_006",
+        "inc_YES_012",
+        "inc_NO_009",
+        "inc_PAIN_015",
+        "inc_DOCTOR_008",
+        "inc_THANK-YOU_011",
+        "inc_HELP_014"
+      ]
+    },
+    {
+      "seed": 44,
+      "strategy": "random",
+      "round": 4,
+      "total_samples": 60,
+      "acquired_samples": 40,
+      "accuracy": 0.375,
+      "macro_f1": 0.2853,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 0.5,
+          "recall": 0.75,
+          "f1": 0.6,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.375,
+          "recall": 0.75,
+          "f1": 0.5,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.1429,
+          "recall": 0.25,
+          "f1": 0.1818,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.4,
+          "recall": 1.0,
+          "f1": 0.5714,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_DOCTOR_007",
+        "inc_HELP_015",
+        "inc_WATER_014",
+        "inc_THANK-YOU_013",
+        "inc_HELP_007",
+        "inc_WATER_009",
+        "inc_WATER_015",
+        "inc_DOCTOR_015",
+        "inc_YES_015",
+        "inc_WATER_013"
+      ]
+    },
+    {
+      "seed": 44,
+      "strategy": "random",
+      "round": 5,
+      "total_samples": 70,
+      "acquired_samples": 50,
+      "accuracy": 0.4,
+      "macro_f1": 0.3407,
+      "per_class": {
+        "DOCTOR": {
+          "precision": 0.6,
+          "recall": 0.75,
+          "f1": 0.6667,
+          "support": 4
+        },
+        "EMERGENCY": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "FOOD": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "HELLO": {
+          "precision": 0.4286,
+          "recall": 0.75,
+          "f1": 0.5455,
+          "support": 4
+        },
+        "HELP": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "NO": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        },
+        "PAIN": {
+          "precision": 1.0,
+          "recall": 0.25,
+          "f1": 0.4,
+          "support": 4
+        },
+        "THANK-YOU": {
+          "precision": 0.25,
+          "recall": 0.5,
+          "f1": 0.3333,
+          "support": 4
+        },
+        "WATER": {
+          "precision": 0.3333,
+          "recall": 0.75,
+          "f1": 0.4615,
+          "support": 4
+        },
+        "YES": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 4
+        }
+      },
+      "acquired_ids": [
+        "inc_WATER_016",
+        "inc_HELLO_010",
+        "inc_THANK-YOU_004",
+        "inc_WATER_004",
+        "inc_HELLO_016",
+        "inc_FOOD_014",
+        "inc_PAIN_007",
+        "inc_WATER_011",
+        "inc_THANK-YOU_005",
+        "inc_HELLO_014"
+      ]
+    }
+  ],
+  "warnings": [
+    "Signer IDs are unverified in the public INCLUDE dataset metadata; evaluation is not signer-independent and uses the frozen official subset split.",
+    "Model uncertainty is computed as a multi-fold validation-error proxy (1 - recall) over the permitted training pool, not predictive entropy or Bayesian uncertainty.",
+    "The live SIGNFORGE application is a demo collection layer; team recordings and demo fixtures are strictly excluded from this scientific benchmark.",
+    "Benchmark execution completed across 3 seeds in 60.85s."
+  ]
+}
