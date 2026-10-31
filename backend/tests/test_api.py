@@ -174,3 +174,10 @@ def test_withdraw_blocks_capture_and_training_and_can_delete_samples(client, ids
     assert not os.path.exists(s["feature_path"])
     assert client.post("/api/consents/999999/withdraw", json={"delete_samples": True}).status_code == 404
     assert client.post(f"/api/consents/{w['consent_id']}/withdraw", json={}).status_code == 422
+
+
+def test_adding_a_sign_the_project_already_has_is_refused(client, ids):
+    dup = client.post("/api/sign-classes", json={"project_id": ids["project_id"], "gloss": "hello"})
+    assert dup.status_code == 409
+    new = client.post("/api/sign-classes", json={"project_id": ids["project_id"], "gloss": "GOOD-LUCK"})
+    assert new.status_code == 201 and new.json()["gloss"] == "GOOD-LUCK"

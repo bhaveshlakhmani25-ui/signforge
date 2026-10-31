@@ -99,7 +99,7 @@ function triage(b: LocalBundle, sampleId: number, gloss: string, qc: ReturnType<
 
 // ---- storage: one IndexedDB database, ids far above the snapshot's so they never collide ----
 const FIRST_ID = 1_000_001;
-const STORES = ["signers", "consents", "samples", "reviews"] as const;
+const STORES = ["signers", "consents", "samples", "reviews", "classes"] as const; // classes: signs added in this browser
 type Store = (typeof STORES)[number];
 let dbp: Promise<IDBDatabase> | null = null;
 const fail = (e: unknown): never => {
@@ -107,8 +107,8 @@ const fail = (e: unknown): never => {
 };
 function db() {
   dbp ??= new Promise<IDBDatabase>((res, rej) => {
-    const r = indexedDB.open("signforge-local", 1);
-    r.onupgradeneeded = () => STORES.forEach((s) => r.result.createObjectStore(s, { keyPath: "id" }));
+    const r = indexedDB.open("signforge-local", 2);
+    r.onupgradeneeded = () => STORES.filter((s) => !r.result.objectStoreNames.contains(s)).forEach((s) => r.result.createObjectStore(s, { keyPath: "id" }));
     r.onsuccess = () => res(r.result);
     r.onerror = () => rej(r.error);
   }).catch((e) => { dbp = null; return fail(e); });
@@ -142,6 +142,9 @@ async function deleteSample(id: number) {
   await del("samples", id);
 }
 
+/** A sign name as the datasets write it: upper case, words joined by hyphens ("good luck" -> GOOD-LUCK). */
+export const normaliseGloss = (g: string) => g.toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 50);
+
 export const NOT_LOCAL = Symbol("not local");
 type Snap = <T>(path: string) => Promise<T>;
 
@@ -153,7 +156,19 @@ export async function localRequest(path: string, method: string, body: unknown, 
   const id = Number(url.pathname.match(/\/(\d+)(?=\/|$)/)?.[1]);
   const snapOr = async <T,>(p: string, fallback: T) => snap<T>(p).catch(() => fallback);
 
+  const signsOf = async (pid: number) =>
+    [...await snapOr<Row[]>(`/api/sign-classes?project_id=${pid}`, []), ...(await all("classes")).filter((c) => c.project_id === pid)];
+
   switch (route) {
+    case "GET /api/sign-classes":
+      return signsOf(Number(q("project_id")));
+    case "POST /api/sign-classes": {
+      const gloss = normaliseGloss(String(b.gloss ?? ""));
+      if (!gloss) throw httpError(422, "Name the sign with letters or numbers, for example GOOD-LUCK.");
+      if ((await signsOf(Number(b.project_id))).some((c) => c.gloss === gloss)) throw httpError(409, `This project already has a sign called ${gloss}.`);
+      return put("classes", { id: await nextId("classes"), project_id: b.project_id, gloss, prompt_text: b.prompt_text ?? "", dialect_note: b.dialect_note ?? "",
+                              added_in_browser: true, created_at: now() });
+    }
     case "POST /api/signers": {
       const mine = (await all("signers")).find((s) => s.project_id === b.project_id && s.code === b.code);
       return mine ?? put("signers", { id: await nextId("signers"), project_id: b.project_id, code: b.code, created_at: now() });
@@ -182,7 +197,7 @@ export async function localRequest(path: string, method: string, body: unknown, 
       return { status: "withdrawn", deleted_samples: b.delete_samples ? affected.length : 0 };
     }
     case "POST /api/samples/capture": {
-      const classes = await snap<{ id: number; gloss: string }[]>(`/api/sign-classes?project_id=${b.project_id}`);
+      const classes = await signsOf(Number(b.project_id));
       const sign = classes.find((c) => c.id === b.sign_class_id);
       const signer = await get("signers", Number(b.signer_id)), consent = await get("consents", Number(b.consent_id));
       if (!sign || !signer || signer.project_id !== b.project_id) throw httpError(422, "That sign or signer belongs to a different project. Reload the page and try again.");
@@ -192,7 +207,7 @@ export async function localRequest(path: string, method: string, body: unknown, 
       const B = await bundle(), qc = runQc(B, frames, width, height), sha = await sha256(frames);
       const dup = (await all("samples")).find((s) => s.project_id === b.project_id && s.feature_sha256 === sha);
       if (dup) { qc.flags.push({ code: "duplicate", severity: "error", message: `Identical landmarks already stored as sample #${dup.id}.` }); qc.passed = false; }
-      const sid = await nextId("samples"), t = triage(B, sid, sign.gloss, qc, frames);
+      const sid = await nextId("samples"), t = triage(B, sid, String(sign.gloss), qc, frames);
       const sample: Row = {
         id: sid, project_id: b.project_id, sign_class_id: sign.id, signer_id: signer.id, consent_id: consent.id, source: b.source,
         feature_path: "", feature_schema_version: "mp-holistic-75-xyz-v1", extractor: b.extractor, extractor_model_sha: b.extractor_model_sha,
@@ -253,7 +268,8 @@ export async function trainingClips(projectId: number) {
     return c?.status === "active" && (c.allowed_uses as string[]).includes("model_training");
   });
   return { counts: { recorded: mine.length, passed: passed.length, approved: approved.length, eligible: eligible.length },
-           clips: eligible.map((s) => ({ id: s.id, sign_class_id: s.sign_class_id as number, frames: s.frames as InFrame[] })) };
+           clips: eligible.map((s) => ({ id: s.id, sign_class_id: s.sign_class_id as number, frames: s.frames as InFrame[] })),
+           added: (await all("classes")).filter((c) => c.project_id === projectId).map((c) => ({ id: c.id, gloss: String(c.gloss) })) };
 }
 
 // A retrained output layer, kept per project on this device. It is dropped as soon as any clip it learned from is

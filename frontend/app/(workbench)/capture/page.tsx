@@ -3,6 +3,7 @@
 import type { HolisticLandmarkerResult } from "@mediapipe/tasks-vision";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { normaliseGloss } from "@/lib/localCorpus";
 import { SNAPSHOT, api, currentProject, type Consent, type Frame, type Project, type Sample, type SignClass, type Signer, when } from "@/lib/api";
 import { EXTRACTOR, extractFromVideo, loadHolistic, trackVideo } from "@/lib/holistic";
 import { drawSkeleton, EMPTY, smooth } from "@/lib/skeleton";
@@ -256,7 +257,7 @@ export default function CapturePage() {
             {classes.map((c) => <option key={c.id} value={c.id}>{c.gloss}</option>)}
           </select>
         </label>
-        {project && !classes.length && <p className="text-sm text-amber-900">This project has no sign classes yet, so nothing can be recorded. Add classes with <code>scripts/seed.py</code> or the API.</p>}
+        {project && <AddSign projectId={project.id} disabled={busy} onAdded={(c) => { setClasses((cs) => [...cs, c]); setClassId(c.id); setRecommended(false); }} />}
         {sign?.dialect_note && <p className="text-xs text-indigo">Note: {sign.dialect_note}</p>}
         <label className="block text-sm">Pseudonymous signer code (not a name), e.g. S-01
           <input className="mt-1 block w-full max-w-sm rounded-lg border border-lavender p-2 uppercase" value={code} disabled={!!consent}
@@ -373,5 +374,40 @@ function LocalClips() {
       <button className="underline underline-offset-2" onClick={download}>Download my clips (landmarks JSON)</button>
       {error && <span className="ml-2 text-red-800">{error}</span>}
     </p>
+  );
+}
+
+/** A sign the project does not have yet. On the public demo it is saved in this browser; with the backend, in the project. */
+function AddSign({ projectId, disabled, onAdded }: { projectId: number; disabled: boolean; onAdded: (c: SignClass) => void }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const gloss = normaliseGloss(name);
+  async function add() {
+    setSaving(true); setError("");
+    try {
+      onAdded(await api<SignClass>("/api/sign-classes", { body: { project_id: projectId, gloss, prompt_text: `Sign "${gloss.toLowerCase().replaceAll("-", " ")}"` } }));
+      setName(""); setOpen(false);
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    setSaving(false);
+  }
+  if (!open) return <button className="text-sm text-indigo underline underline-offset-2 disabled:opacity-60" disabled={disabled} onClick={() => setOpen(true)}>Add a new sign</button>;
+  return (
+    <div className="max-w-sm space-y-2 border border-lavender p-3">
+      <label className="block text-sm">Name of the new sign (an English gloss, e.g. GOOD-LUCK)
+        <input className="mt-1 block w-full rounded-lg border border-lavender p-2 uppercase" value={name} maxLength={50}
+               onChange={(e) => setName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && gloss) add(); }} />
+      </label>
+      <p className="text-xs text-indigo">
+        A gloss is only a label, not a translation. To teach the model this sign: record at least 3 clips, approve them in Corpus &amp; review
+        (with model training allowed in the consent), then retrain on Models &amp; evaluation.
+      </p>
+      {error && <p className="text-sm text-red-800">{error}</p>}
+      <div className="flex gap-2">
+        <button className="rounded-lg bg-indigo px-3 py-2 text-sm text-white disabled:opacity-60" disabled={!gloss || saving} onClick={add}>{saving ? "Adding…" : gloss ? `Add ${gloss}` : "Add"}</button>
+        <button className="rounded-lg px-3 py-2 text-sm text-indigo" onClick={() => { setOpen(false); setError(""); }}>Cancel</button>
+      </div>
+    </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, currentProject, loadModelBundle, readSnapshot, SNAPSHOT, type Calibration, type ModelRun, type SignClass, when } from "@/lib/api";
-import type { Features, TrainedHead } from "@/lib/headTraining";
+import { MIN_NEW_SIGN_CLIPS, type Features, type TrainedHead } from "@/lib/headTraining";
 import { card, DemoBadge, ErrorBanner } from "@/components/ui";
 
 const pct = (v?: number | null) => (v == null ? "Not evaluated" : `${(v * 100).toFixed(1)}%`);
@@ -170,8 +170,9 @@ const pc = (v: number | null) => (v == null ? "—" : `${(v * 100).toFixed(1)}%`
 
 async function retrainState(projectId: number) {
   const [{ trainingClips, activeHead }, bundle] = await Promise.all([import("@/lib/localCorpus"), loadModelBundle()]);
-  const [{ counts }, { head, dropped }] = await Promise.all([trainingClips(projectId), activeHead(projectId)]);
-  return { counts, head, dropped, hasModel: String(projectId) in bundle.models };
+  const [{ counts, clips, added }, { head, dropped }] = await Promise.all([trainingClips(projectId), activeHead(projectId)]);
+  const newSigns = added.map((a) => ({ gloss: a.gloss, clips: clips.filter((c) => c.sign_class_id === a.id).length }));
+  return { counts, newSigns, head, dropped, hasModel: String(projectId) in bundle.models };
 }
 
 /** Public demo: retrain the interpreter's output layer in this browser on the dataset plus this visitor's approved clips. */
@@ -190,7 +191,8 @@ function BrowserRetrain({ projectId }: { projectId: number }) {
       const [{ trainingClips }, { trainHead }, bundle, feats] = await Promise.all([
         import("@/lib/localCorpus"), import("@/lib/headTraining"), loadModelBundle(), readSnapshot<Features>(`/interpret/features/${projectId}`)]);
       await new Promise((r) => setTimeout(r)); // let "Training…" paint before the CPU-bound loop
-      const head = trainHead(bundle, bundle.models[String(projectId)], projectId, feats, (await trainingClips(projectId)).clips);
+      const { clips, added } = await trainingClips(projectId);
+      const head = trainHead(bundle, bundle.models[String(projectId)], projectId, feats, clips, added);
       setResult(head);
     } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
     setBusy(false);
@@ -219,6 +221,10 @@ function BrowserRetrain({ projectId }: { projectId: number }) {
               Your clips in this project: {c.recorded} recorded · {c.passed} passed the automated check · {c.approved} approved · <strong>{c.eligible} usable for training</strong>.
               {c.eligible === 0 && " A clip is usable once it passes the automated check, you approve it in Corpus & review, and its consent allows model training (an optional box when you record consent)."}
             </p>
+            {state.newSigns.length > 0 && (
+              <p className="mt-2 text-sm">Signs you added: {state.newSigns.map((n) => `${n.gloss} (${n.clips} usable clip${n.clips === 1 ? "" : "s"})`).join(", ")}.
+                {" "}A new sign is learned once it has at least {MIN_NEW_SIGN_CLIPS} usable clips.</p>
+            )}
             {state.dropped && <p className="mt-2 text-sm text-amber-900">Your earlier retrained layer was removed: a clip it learned from was deleted, rejected or lost its training consent.</p>}
             <div className="mt-3 flex flex-wrap gap-2">
               <button className="rounded-lg bg-indigo px-3 py-2 text-sm text-white disabled:opacity-60" disabled={busy} onClick={retrain}>
@@ -240,6 +246,9 @@ function BrowserRetrain({ projectId }: { projectId: number }) {
                     ))}
                   </tbody>
                 </table>
+                {shown.new_signs?.length > 0 && <p className="mt-2 text-sm">New signs it can now recognise: <strong>{shown.new_signs.map((n) => n.gloss).join(", ")}</strong>.
+                  {" "}They have no held-out test clips, so how well they are recognised is not measured; extra signs can also lower accuracy on the old ones.</p>}
+                {shown.skipped_signs?.length > 0 && <p className="mt-1 text-sm text-amber-900">Not learned yet (fewer than {MIN_NEW_SIGN_CLIPS} usable clips): {shown.skipped_signs.map((n) => `${n.gloss} (${n.clips})`).join(", ")}.</p>}
                 <p className="mt-2 text-xs text-indigo">The test clips are dataset clips the model never trained on. Your own clips have no held-out test clips, so how much they help your signing is <strong>not measured</strong>.</p>
               </div>
             )}

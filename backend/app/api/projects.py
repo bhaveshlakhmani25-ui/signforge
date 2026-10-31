@@ -50,6 +50,9 @@ def list_sign_classes(project_id: int, session: Session = Depends(get_session)):
 @router.post("/sign-classes", status_code=201)
 def create_sign_class(body: SignClassIn, session: Session = Depends(get_session)):
     get_or_404(session, Project, body.project_id)
+    existing = session.exec(select(SignClass.gloss).where(SignClass.project_id == body.project_id)).all()
+    if body.gloss.strip().upper() in {g.upper() for g in existing}:
+        raise HTTPException(409, f"This project already has a sign called {body.gloss.strip().upper()}.")
     return save(session, SignClass(**body.model_dump()))
 
 
