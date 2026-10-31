@@ -18,6 +18,12 @@ backup-2026-10-22/
 __pycache__/
 .pytest_cache/
 
+dataset/
+*.zip
+*.MOV
+*.mp4
+zenodo_meta.json
+
 # Downloaded public datasets (large, licence-bound)
 data/raw/
 

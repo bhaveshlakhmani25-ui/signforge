@@ -1304,6 +1304,3 @@ def test_export_endpoint_backward_compatibility(client, setup_data):
     # 3. Call with include_external=True
     r3 = client.get(f"/api/export/corpus", params={"project_id": pid, "include_external": True})
     assert r3.status_code == 200
-
-
-

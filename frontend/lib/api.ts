@@ -94,6 +94,9 @@ export type ModelRun = {
              confusion_matrix?: number[][]; labels?: number[]; n_test?: number; n_train?: number; train_classes?: number[];
              calibration?: Calibration | null };
 };
+// Next-sample queue (the ranker's output; contract agreed with the backend pair). `uncertainty` is null until a model exists.
+export type QueueItem = { sign_id: number; gloss: string; priority: number; coverage_gap: number; signer_gap: number; uncertainty: number | null; reason: string };
+export type Queue = { formula: string; uncertainty_available: boolean; items: QueueItem[] };
 export type ReliabilityBin = { lo: number; hi: number; n: number; mean_confidence: number | null; accuracy: number | null };
 export type Reliability = { ece: number; n: number; bins: ReliabilityBin[] };
 export type Calibration = {
