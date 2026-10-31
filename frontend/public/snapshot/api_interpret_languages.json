@@ -1,0 +1,1 @@
+[{"project_id":2,"name":"INCLUDE Greetings + Pronouns (external dataset)","target_language":"Indian Sign Language","run_id":6,"n_signs":17,"accuracy":0.5593},{"project_id":3,"name":"ASL signs (external dataset)","target_language":"American Sign Language","run_id":5,"n_signs":16,"accuracy":0.1818}]

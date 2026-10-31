@@ -4,7 +4,7 @@ import type { HolisticLandmarkerResult } from "@mediapipe/tasks-vision";
 import { useEffect, useRef, useState } from "react";
 import { card, ErrorBanner } from "@/components/ui";
 import LandmarkReplay from "@/components/LandmarkReplay";
-import { api, type Consent, type Frame, type Sample, type Signer } from "@/lib/api";
+import { SNAPSHOT, api, type Consent, type Frame, type Sample, type Signer } from "@/lib/api";
 import { EXTRACTOR, extractFromVideo, loadHolistic, trackVideo } from "@/lib/holistic";
 import { drawSkeleton, EMPTY, smooth } from "@/lib/skeleton";
 
@@ -197,7 +197,7 @@ export default function LearnPage() {
               {cameraOn
                 ? <button onClick={tryIt} disabled={busy} className="rounded-full bg-navy px-6 py-3 font-semibold text-white hover:bg-safelight hover:text-navy disabled:opacity-60">
                     {attempt ? "Try again" : `Sign ${pick.gloss} (${TRY_SECONDS} s)`}</button>
-                : <button onClick={startCamera} className="rounded-full bg-navy px-6 py-3 font-semibold text-white hover:bg-safelight hover:text-navy">Start camera</button>}
+                : <button onClick={startCamera} disabled={SNAPSHOT} title={SNAPSHOT ? "Needs the live backend" : undefined} className="rounded-full bg-navy px-6 py-3 font-semibold text-white hover:bg-safelight hover:text-navy disabled:opacity-60">Start camera</button>}
             </div>
             <p className="text-sm text-indigo">Nothing is saved unless you choose to below. Only landmarks are ever sent, never video.</p>
 

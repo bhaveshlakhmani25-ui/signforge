@@ -3,7 +3,7 @@
 import type { HolisticLandmarkerResult } from "@mediapipe/tasks-vision";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { api, currentProject, type Consent, type Frame, type Project, type Sample, type SignClass, type Signer, when } from "@/lib/api";
+import { SNAPSHOT, api, currentProject, type Consent, type Frame, type Project, type Sample, type SignClass, type Signer, when } from "@/lib/api";
 import { EXTRACTOR, extractFromVideo, loadHolistic, trackVideo } from "@/lib/holistic";
 import { drawSkeleton, EMPTY, smooth } from "@/lib/skeleton";
 import CameraModes from "@/components/CameraModes";
@@ -310,7 +310,7 @@ export default function CapturePage() {
         <div className="flex flex-wrap items-center gap-2">
           {cameraOn
             ? <button className="rounded-lg border border-indigo px-3 py-2 disabled:opacity-60" disabled={busy} onClick={stopCamera}>Stop camera</button>
-            : <button className="rounded-lg border border-indigo px-3 py-2 disabled:opacity-60" disabled={!consent || busy} onClick={startCamera}>Start camera</button>}
+            : <button className="rounded-lg border border-indigo px-3 py-2 disabled:opacity-60" disabled={!consent || busy || SNAPSHOT} title={SNAPSHOT ? "Needs the live backend" : undefined} onClick={startCamera}>Start camera</button>}
           {recording ? (
             <>
               <button className="rounded-lg bg-teal px-3 py-2 text-white" onClick={() => (stopRef.current = "stop")}>Stop and save</button>

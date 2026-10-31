@@ -65,3 +65,16 @@ The repo enables the **ponytail** plugin in `.claude/settings.json`; Claude Code
 - `/ponytail lite | full | ultra`: how hard to push back on scope (default `full`).
 - `/ponytail-debt`: list every `shortcut:` left in the code: our to-do list before real data collection.
 - `/ponytail-review`: review a change for bugs, safety and unneeded code before merging.
+
+### GitHub Pages without a backend (public read-only demo)
+
+If the repo variable `API_URL` is unset, the Pages build runs in snapshot mode: it reads frozen JSON from `frontend/public/snapshot/` instead of calling an API.
+It holds external datasets and DEMO DATA only (never team clips, signers, consents or reviews) and is read-only; recording, review, training and the live camera need the backend.
+Refresh it after changing the data or models:
+
+```bash
+python deploy/hf-space/build_space.py
+backend/.venv/bin/python deploy/pages/export_snapshot.py   # then commit frontend/public/snapshot
+```
+
+Set `API_URL` to a hosted backend later and the Pages site switches to live mode on its next deploy.

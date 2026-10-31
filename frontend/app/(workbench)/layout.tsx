@@ -14,7 +14,15 @@ export default function WorkbenchLayout({ children }: { children: React.ReactNod
         <ProjectSwitcher />
         <Nav />
       </aside>
-      <main className="mx-auto w-full min-w-0 max-w-6xl flex-1 px-4 py-6 md:px-8">{children}</main>
+      <main className="mx-auto w-full min-w-0 max-w-6xl flex-1 px-4 py-6 md:px-8">
+        {process.env.NEXT_PUBLIC_SNAPSHOT === "1" && (
+          <p role="note" className="mb-6 border border-lavender border-l-4 border-l-teal bg-white px-4 py-3 text-sm text-indigo">
+            <strong className="text-navy">Public read-only demo.</strong> You are browsing a frozen snapshot of the public datasets and DEMO DATA.
+            Recording, review, training and the live camera need the backend: run SIGNFORGE locally (see the README).
+          </p>
+        )}
+        {children}
+      </main>
     </div>
   );
 }

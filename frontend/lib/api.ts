@@ -55,8 +55,24 @@ export type ActiveLearningQueueResponse = {
   queue: ActiveLearningQueueItem[];
 };
 
+// GitHub Pages has no backend: that build reads frozen, public-safe JSON (deploy/pages/export_snapshot.py) and is read-only.
+export const SNAPSHOT = process.env.NEXT_PUBLIC_SNAPSHOT === "1";
+const snapshotKey = (path: string) => path.replace(/[^A-Za-z0-9]+/g, "_").replace(/^_+|_+$/g, ""); // matches export_snapshot.py
+
+async function fromSnapshot<T>(path: string, method: string): Promise<T> {
+  const test = path.startsWith("/api/interpret/test-clip");
+  if (method !== "GET" && !test) {
+    throw new Error("This public demo is read-only. Run SIGNFORGE locally to record, review, train or read a live camera.");
+  }
+  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/snapshot/${snapshotKey(path)}.json`).catch(() => null);
+  if (!res?.ok) throw Object.assign(new Error("Not part of the public demo snapshot."), { status: 404 });
+  const data = await res.json();
+  return (test ? data[Math.floor(Math.random() * data.length)] : data) as T;
+}
+
 export async function api<T>(path: string, init?: { method?: string; body?: unknown }): Promise<T> {
   const method = init?.method ?? (init?.body ? "POST" : "GET");
+  if (SNAPSHOT) return fromSnapshot<T>(path, method);
   let res: Response;
   try {
     res = await fetch(API_URL + path, {
@@ -114,5 +130,9 @@ export async function currentProject(): Promise<Project | undefined> {
   const projects = await api<Project[]>("/api/projects");
   let id = 0;
   try { id = Number(localStorage.getItem(PROJECT_KEY)); } catch { /* storage blocked */ }
-  return projects.find((p) => p.id === id) ?? projects[0];
+  const picked = projects.find((p) => p.id === id);
+  if (picked || !SNAPSHOT) return picked ?? projects[0];
+  // The public snapshot has no team clips, so open on the dataset that has a trained model rather than an empty project.
+  const best = (await api<{ project_id: number; accuracy: number | null }[]>("/api/interpret/languages")).sort((a, b) => (b.accuracy ?? 0) - (a.accuracy ?? 0))[0];
+  return projects.find((p) => p.id === best?.project_id) ?? projects[0];
 }
