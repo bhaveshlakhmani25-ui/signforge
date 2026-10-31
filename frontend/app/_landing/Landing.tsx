@@ -213,7 +213,6 @@ export default function Landing() {
             <p className="mt-3 max-w-[30ch] text-[1.05rem] leading-relaxed text-[#efeee9]/70">
               A corpus builder for low-resource sign languages: from a few native signs to a model-ready corpus.
             </p>
-            <Link href="/dashboard" className="mt-6 inline-block rounded-full bg-[#efeee9] px-6 py-3 font-semibold text-[#0c0c0b] transition-colors hover:bg-[#f2a33a]">Open the dashboard</Link>
           </div>
           <nav aria-label="Footer">
             <p className="f-mono text-xs uppercase tracking-[0.14em] text-[#efeee9]/50">Explore</p>
