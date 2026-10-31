@@ -9,6 +9,7 @@ from app.db import get_session
 from app.db.models import ConsentRecord, ReviewEvent, Sample, SignClass, Signer
 from app.schemas import CaptureIn, ReviewIn
 from app.services.landmark_schema import FEATURE_SCHEMA_VERSION
+from app.services.mock_policy import non_mock_sample_clause
 from app.services import landmark_schema as S
 from app.services import triage
 from app.services.preprocessing import frames_to_arrays, resample
@@ -83,7 +84,7 @@ def list_samples(project_id: int, sign_class_id: Optional[int] = None, signer_id
         if val is not None:
             q = q.where(col == val)
     if not include_demo:  # DEMO DATA never enters real listings/evaluation by default
-        q = q.where(Sample.source != "demo_fixture")
+        q = q.where(non_mock_sample_clause())
     return session.exec(q.order_by(Sample.id.desc())).all()
 
 
@@ -117,9 +118,8 @@ def review(sample_id: int, body: ReviewIn, session: Session = Depends(get_sessio
     return save(session, sample)
 
 
-@router.delete("/{sample_id}")
+@router.delete("/{sample_id}", status_code=204)
 def delete(sample_id: int, session: Session = Depends(get_session)):
     """Deletes a sample, its review events and its stored landmark file."""
     delete_sample(session, get_or_404(session, Sample, sample_id))
     session.commit()
-    return {"deleted": True, "sample_id": sample_id}

@@ -34,6 +34,15 @@ def delete_sample(session: Session, sample: Sample) -> None:
     session.delete(sample)
 
 
+def delete_sample(session: Session, sample: Sample) -> None:
+    """Erase a sample's landmark file, its review events and its row. The caller commits.
+    Models already trained on it are not retrained; their runs keep the ids but not the data."""
+    delete_features(sample.feature_path)
+    for e in session.exec(select(ReviewEvent).where(ReviewEvent.sample_id == sample.id)).all():
+        session.delete(e)
+    session.delete(sample)
+
+
 @router.get("/projects")
 def list_projects(session: Session = Depends(get_session)):
     return session.exec(select(Project)).all()
@@ -98,6 +107,4 @@ def withdraw_consent(consent_id: int, body: Optional[WithdrawIn] = None, delete_
             s.provenance_note = f"{s.provenance_note} [CONSENT WITHDRAWN]".strip()
             session.add(s)
     session.commit()
-    deleted = len(affected) if erase else 0
-    return {"status": consent.status, "consent_id": consent_id, "samples_affected": len(affected),
-            "samples_deleted": deleted, "deleted_samples": deleted}
+    return {"status": consent.status, "deleted_samples": len(affected) if erase else 0}

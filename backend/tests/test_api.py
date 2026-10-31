@@ -139,7 +139,7 @@ def test_delete_sample_removes_file_row_and_reviews(client, ids):
     client.post(f"/api/samples/{s['id']}/review", json={"reviewer_code": "R-01", "reviewer_role": "team_non_signer",
                                                         "decision": "approved"})
     assert os.path.exists(s["feature_path"])
-    assert client.delete(f"/api/samples/{s['id']}").status_code == 200
+    assert client.delete(f"/api/samples/{s['id']}").status_code == 204
     assert not os.path.exists(s["feature_path"])
     assert s["id"] not in [x["id"] for x in client.get("/api/samples", params={"project_id": ids["project_id"]}).json()]
     assert client.get(f"/api/samples/{s['id']}/reviews").json() == []
