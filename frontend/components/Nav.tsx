@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const LIVE = [["/", "Overview"], ["/capture", "Capture"], ["/corpus", "Corpus & review"], ["/models", "Models & evaluation"],
+const LIVE = [["/dashboard", "Dashboard"], ["/capture", "Capture"], ["/corpus", "Corpus & review"], ["/models", "Models & evaluation"],
                     ["/active-learning", "Active learning"], ["/benchmark", "Benchmark"]] as const;
 // Shown so the roadmap is visible, but disabled: these pages are not built yet.
 const PLANNED = ["Export", "Project settings"];
@@ -13,7 +13,7 @@ export default function Nav() {
   return (
     <nav aria-label="Main" className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">
       {LIVE.map(([href, label]) => {
-        const active = href === "/" ? path === "/" : path.startsWith(href);
+        const active = path.startsWith(href);
         return (
           <Link key={href} href={href} aria-current={active ? "page" : undefined}
                 className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm ${active ? "bg-indigo text-white" : "text-lavender hover:bg-white/10 hover:text-white"}`}>
