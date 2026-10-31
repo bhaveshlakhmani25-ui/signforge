@@ -4,7 +4,7 @@ from pathlib import Path
 BACKEND_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = Path(os.environ.get("SIGNFORGE_DATA_DIR", BACKEND_DIR.parent / "data" / "processed"))
 DATABASE_URL = os.environ.get("DATABASE_URL", f"sqlite:///{BACKEND_DIR / 'signforge.db'}")
-CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",")
+CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:3000,https://bhaveshlakhmani25-ui.github.io").split(",")
 
 # D5: one sampling rate for every experiment (pretraining effective rate ~8-10 fps, see plan U3).
 TARGET_FPS = 10

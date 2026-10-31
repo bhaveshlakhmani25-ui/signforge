@@ -21,7 +21,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="SIGNFORGE API", lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=C.CORS_ORIGINS, allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(CORSMiddleware, allow_origins=C.CORS_ORIGINS, allow_methods=["*"], allow_headers=["*"],
+                   allow_private_network=True)  # lets the HTTPS Pages site reach a backend running on localhost
 app.include_router(projects.router)
 app.include_router(samples.router)
 app.include_router(models.router)
