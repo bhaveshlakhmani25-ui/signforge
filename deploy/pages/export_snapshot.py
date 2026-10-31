@@ -104,11 +104,32 @@ with TestClient(app) as c:
                     fr["pose"] = [[*pt, 1.0] for pt in fr["pose"]] if fr["pose"] else None
                 body = {"frames": frames, "project_id": L["project_id"]}
                 golden.append({**body, "expected": c.post("/api/interpret", json=body).json()})
-    put("/interpret/models", {"target_fps": C.TARGET_FPS, "model_frames": C.MODEL_FRAMES, "min_conf": TH.INTERPRET_MIN_CONF,
+        # Reference QC results for the browser port of run_qc (deploy/pages/check_local_interpret.ts), passing and failing clips.
+        from sqlmodel import select
+        from app.services.quality_checks import run_qc
+        from app.services.preprocessing import frames_to_arrays
+        qc_golden = []
+        for passed in (True, False):
+            for smp in session.exec(select(Sample).where(Sample.qc_passed == passed).order_by(Sample.id).limit(15)).all():
+                f = load_features(smp.feature_path)
+                frames = [{"t": float(t), **{k: ([[*pt, 1.0] for pt in f["points"][i, sl].tolist()] if k == "pose" else f["points"][i, sl].tolist())
+                                             if f["present"][i, j] else None for j, (k, sl) in enumerate(parts)}} for i, t in enumerate(f["t"])]
+                qc_golden.append({"frames": frames, "width": smp.width, "height": smp.height,
+                                  "expected": run_qc(*frames_to_arrays(frames), smp.width, smp.height)})
+        base = next(g for g in qc_golden if g["expected"]["passed"])  # altered copies reach the branches real clips miss
+        for fn in (lambda fs: [{**f, "pose": None} if i % 2 else f for i, f in enumerate(fs)],                  # body_missing
+                   lambda fs: [{**f, "left_hand": f["right_hand"], "right_hand": f["left_hand"]} for f in fs],   # hand_side_mismatch
+                   lambda fs: [{**f, "t": f["t"] * 6} for f in fs]):                                           # too_long
+            frames = fn(base["frames"])
+            qc_golden.append({**base, "frames": frames, "expected": run_qc(*frames_to_arrays(frames), base["width"], base["height"])})
+    put("/interpret/models", {"qc": {k: getattr(C, k) for k in dir(C) if k.startswith("QC_")},
+                              "pose_l_wrist": S.POSE_L_WRIST, "pose_r_wrist": S.POSE_R_WRIST,
+                              "verify_min_conf": TH.VERIFY_MIN_CONF, "verify_margin": TH.VERIFY_MARGIN,
+                              "model_verify_enabled": TH.MODEL_VERIFY_ENABLED,"target_fps": C.TARGET_FPS, "model_frames": C.MODEL_FRAMES, "min_conf": TH.INTERPRET_MIN_CONF,
                               "min_hand_share": TH.INTERPRET_MIN_HAND_SHARE, "min_motion": TH.INTERPRET_MIN_MOTION,
                               "minimal_27": S.MINIMAL_27, "shoulder_nodes_27": list(S.SHOULDER_NODES_27),
                               "lh_wrist": S.LH_WRIST, "rh_wrist": S.RH_WRIST, "models": models})
-    (ROOT / "deploy" / "pages" / "golden.json").write_text(json.dumps(golden))
+    (ROOT / "deploy" / "pages" / "golden.json").write_text(json.dumps({"interpret": golden, "qc": qc_golden}))
 
     for sid in sorted(need_landmarks):
         r = c.get(f"/api/samples/{sid}/landmarks")

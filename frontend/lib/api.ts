@@ -1,4 +1,5 @@
-import type { Bundle, InFrame, interpretLocally } from "./localInterpret";
+import type { InFrame } from "./localInterpret.ts";
+import type { LocalBundle } from "./localCorpus.ts";
 
 // Public, non-secret base URL of the local FastAPI backend.
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -62,24 +63,33 @@ export const SNAPSHOT = process.env.NEXT_PUBLIC_SNAPSHOT === "1";
 const snapshotKey = (path: string) => path.replace(/[^A-Za-z0-9]+/g, "_").replace(/^_+|_+$/g, ""); // matches export_snapshot.py
 
 const snapshotFile = (name: string) => fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/snapshot/${name}.json`).catch(() => null);
-let interpreter: Promise<{ bundle: Bundle; run: typeof interpretLocally }> | null = null;
+let bundle: Promise<LocalBundle> | null = null; // model weights + check settings, loaded once when first needed
+const loadBundle = () => (bundle ??= snapshotFile("interpret_models")
+  .then((r) => { if (!r?.ok) throw new Error("Could not load the model for this demo. Check your connection and try again."); return r.json(); })
+  .catch((e) => { bundle = null; throw e; }));
 
-async function fromSnapshot<T>(path: string, method: string, body?: unknown): Promise<T> {
-  const test = path.startsWith("/api/interpret/test-clip");
-  if (path === "/api/interpret" && method === "POST") { // live camera: the same model, run in this browser
-    interpreter ??= Promise.all([snapshotFile("interpret_models").then((r) => r!.json()), import("./localInterpret")])
-      .then(([bundle, mod]) => ({ bundle, run: mod.interpretLocally }));
-    const { bundle, run } = await interpreter.catch((e) => { interpreter = null; throw e; });
-    const b = body as { frames: InFrame[]; project_id?: number | null };
-    return run(bundle, b.frames, b.project_id ?? null) as T;
-  }
-  if (method !== "GET" && !test) {
-    throw new Error("This public demo is read-only. Run SIGNFORGE locally to record, review or train.");
-  }
+async function readSnapshot<T>(path: string): Promise<T> {
   const res = await snapshotFile(snapshotKey(path));
   if (!res?.ok) throw Object.assign(new Error("Not part of the public demo snapshot."), { status: 404 });
-  const data = await res.json();
-  return (test ? data[Math.floor(Math.random() * data.length)] : data) as T;
+  return res.json();
+}
+
+async function fromSnapshot<T>(path: string, method: string, body?: unknown): Promise<T> {
+  if (path === "/api/interpret" && method === "POST") { // live camera: the same model, run in this browser
+    const [b, { interpretLocally }] = await Promise.all([loadBundle(), import("./localInterpret.ts")]);
+    const req = body as { frames: InFrame[]; project_id?: number | null };
+    return interpretLocally(b, req.frames, req.project_id ?? null) as T;
+  }
+  // Recording: signers, consents, clips and reviews live in this browser only (lib/localCorpus.ts).
+  const { localRequest, NOT_LOCAL } = await import("./localCorpus.ts");
+  const local = await localRequest(path, method, body, readSnapshot, loadBundle);
+  if (local !== NOT_LOCAL) return local as T;
+  if (path.startsWith("/api/interpret/test-clip")) {
+    const pool = await readSnapshot<T[]>(path);
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+  if (method !== "GET") throw new Error("Public dataset clips are read-only here. Clips you record in this browser can be reviewed and deleted.");
+  return readSnapshot<T>(path);
 }
 
 export async function api<T>(path: string, init?: { method?: string; body?: unknown }): Promise<T> {

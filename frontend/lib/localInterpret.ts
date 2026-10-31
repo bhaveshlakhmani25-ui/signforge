@@ -4,7 +4,7 @@
 
 type Pts = number[][] | null;
 export type InFrame = { t: number; pose: Pts; left_hand: Pts; right_hand: Pts };
-type Model = {
+export type Model = {
   run_id: number; hidden: number; labels: number[]; train_classes: number[]; label_glosses: Record<string, string>;
   temperature: number; calibration_passed: boolean;
   w_ih: number[]; w_hh: number[]; b_ih: number[]; b_hh: number[]; w_head: number[]; b_head: number[];
@@ -14,10 +14,14 @@ export type Bundle = {
   minimal_27: number[]; shoulder_nodes_27: number[]; lh_wrist: number; rh_wrist: number; models: Record<string, Model>;
 };
 
-const POSE = 0, LH = 33, RH = 54;
+export const POSE = 0, LH = 33, RH = 54;
+export const at = (f: InFrame, p: number): number[] | null => {
+  const [part, off] = p < LH ? [f.pose, POSE] : p < RH ? [f.left_hand, LH] : [f.right_hand, RH];
+  return part ? part[p - off] : null;
+};
 
 // numpy round(): halves go to the even neighbour.
-const roundEven = (v: number) => { const f = Math.floor(v), d = v - f; return d > 0.5 || (d === 0.5 && f % 2 !== 0) ? f + 1 : f; };
+export const roundEven = (v: number) => { const f = Math.floor(v), d = v - f; return d > 0.5 || (d === 0.5 && f % 2 !== 0) ? f + 1 : f; };
 
 /** numpy.linspace(0, n-1, length).round(): the fixed-length rule shared by training and prediction. */
 function fixedLength(n: number, length: number): number[] {
@@ -26,7 +30,7 @@ function fixedLength(n: number, length: number): number[] {
 }
 
 /** Indices of the frames nearest a uniform fps grid (numpy arange + argmin, first index wins ties). */
-function resample(t: number[], fps: number): number[] {
+export function resample(t: number[], fps: number): number[] {
   const step = 1 / fps, n = Math.max(0, Math.ceil((t[t.length - 1] + 1e-9 - t[0]) / step));
   return Array.from({ length: n }, (_, g) => {
     const target = t[0] + g * step;
@@ -62,33 +66,10 @@ function gruLogits(m: Model, x: Float64Array, T: number, F: number): number[] {
   return Array.from({ length: C }, (_, c) => { let v = m.b_head[c]; for (let k = 0; k < H; k++) v += m.w_head[c * H + k] * h[k]; return v; });
 }
 
-export function interpretLocally(b: Bundle, frames: InFrame[], projectId: number | null) {
-  const m = projectId != null ? b.models[String(projectId)] : Object.values(b.models).sort((p, q) => q.run_id - p.run_id)[0];
-  if (!m) return { state: "no_model", message: "No trained model yet, so nothing can be interpreted.", vocabulary: [] };
-  const known = new Set(m.train_classes);
-  const learned = m.labels.map((c, i) => [c, i]).filter(([c]) => known.has(c)).map(([, i]) => i);
-  const vocab = learned.map((i) => m.label_glosses[String(m.labels[i])]);
-  const base: Record<string, unknown> = { vocabulary: vocab, run_id: m.run_id, calibration_passed: m.calibration_passed };
+const r4 = (v: number) => Math.round(v * 1e4) / 1e4;
 
-  const T = frames.length;
-  if (T < 5) return { ...base, state: "waiting", message: "Waiting for the camera." };
-  const at = (f: InFrame, p: number): number[] | null => {
-    const [part, off] = p < LH ? [f.pose, POSE] : p < RH ? [f.left_hand, LH] : [f.right_hand, RH];
-    return part ? part[p - off] : null;
-  };
-  const hands = frames.filter((f) => f.left_hand || f.right_hand).length;
-  if (hands / T < b.min_hand_share) return { ...base, state: "no_hands", message: "No hands in view. Sign with your hands in front of your body." };
-  const travel: number[] = [];
-  for (const [key, w] of [["left_hand", b.lh_wrist], ["right_hand", b.rh_wrist]] as const) {
-    const rows = frames.filter((f) => f[key]);
-    if (rows.length > 2) {
-      let d = 0;
-      for (let i = 1; i < rows.length; i++) { const p = at(rows[i], w)!, q = at(rows[i - 1], w)!; d += Math.hypot(p[0] - q[0], p[1] - q[1]); }
-      travel.push((d / Math.max(rows.length - 1, 1)) * 10);
-    }
-  }
-  if (!travel.length || Math.max(...travel) < b.min_motion) return { ...base, state: "still", message: "Hands are still. Make a sign." };
-
+/** model_input() + GRU + calibrated softmax over the learned signs (rounded to 4 places, as the API returns them). */
+export function scoreFrames(b: Bundle, m: Model, frames: InFrame[], learned: number[], vocab: string[]) {
   // model_input(): resample, fixed length, minimal-27 x/y, clip-level centre and scale (missing parts are zeros).
   const idx0 = resample(frames.map((f) => f.t), b.target_fps);
   const idx = fixedLength(idx0.length, b.model_frames).map((i) => idx0[i]);
@@ -111,10 +92,44 @@ export function interpretLocally(b: Bundle, frames: InFrame[], projectId: number
   const z = learned.map((i) => logits[i] / m.temperature), top = Math.max(...z);
   const e = z.map((v) => Math.exp(v - top)), sum = e.reduce((a, v) => a + v, 0);
   const probs = e.map((v) => v / sum);
-  const r4 = (v: number) => Math.round(v * 1e4) / 1e4;
   const order = probs.map((_, j) => j).sort((a, c) => probs[c] - probs[a]);
-  const top3 = order.slice(0, 3).map((j) => ({ sign: vocab[j], p: r4(probs[j]) }));
-  base.probs = Object.fromEntries(vocab.map((g, j) => [g, r4(probs[j])]));
+  return { probs: probs.map(r4), top3: order.slice(0, 3).map((j) => ({ sign: vocab[j], p: r4(probs[j]) })) };
+}
+
+/** The model's learned signs: output units whose class had training clips. */
+export function learnedSigns(m: Model) {
+  const known = new Set(m.train_classes);
+  const learned = m.labels.map((c, i) => [c, i]).filter(([c]) => known.has(c)).map(([, i]) => i);
+  return { learned, vocab: learned.map((i) => m.label_glosses[String(m.labels[i])]) };
+}
+
+/** The backend's reference_run(): with no project, the latest calibrated run of any project. */
+export const referenceModel = (b: Bundle, projectId: number | null): Model | undefined =>
+  projectId != null ? b.models[String(projectId)] : Object.values(b.models).sort((p, q) => q.run_id - p.run_id)[0];
+
+export function interpretLocally(b: Bundle, frames: InFrame[], projectId: number | null) {
+  const m = referenceModel(b, projectId);
+  if (!m) return { state: "no_model", message: "No trained model yet, so nothing can be interpreted.", vocabulary: [] };
+  const { learned, vocab } = learnedSigns(m);
+  const base: Record<string, unknown> = { vocabulary: vocab, run_id: m.run_id, calibration_passed: m.calibration_passed };
+
+  const T = frames.length;
+  if (T < 5) return { ...base, state: "waiting", message: "Waiting for the camera." };
+  const hands = frames.filter((f) => f.left_hand || f.right_hand).length;
+  if (hands / T < b.min_hand_share) return { ...base, state: "no_hands", message: "No hands in view. Sign with your hands in front of your body." };
+  const travel: number[] = [];
+  for (const [key, w] of [["left_hand", b.lh_wrist], ["right_hand", b.rh_wrist]] as const) {
+    const rows = frames.filter((f) => f[key]);
+    if (rows.length > 2) {
+      let d = 0;
+      for (let i = 1; i < rows.length; i++) { const p = at(rows[i], w)!, q = at(rows[i - 1], w)!; d += Math.hypot(p[0] - q[0], p[1] - q[1]); }
+      travel.push((d / Math.max(rows.length - 1, 1)) * 10);
+    }
+  }
+  if (!travel.length || Math.max(...travel) < b.min_motion) return { ...base, state: "still", message: "Hands are still. Make a sign." };
+
+  const { probs, top3 } = scoreFrames(b, m, frames, learned, vocab);
+  base.probs = Object.fromEntries(vocab.map((g, j) => [g, probs[j]]));
   const best = top3[0];
   if (best.p < b.min_conf) {
     return { ...base, state: "unsure", top3,

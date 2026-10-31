@@ -18,7 +18,7 @@ export default function WorkbenchLayout({ children }: { children: React.ReactNod
         {process.env.NEXT_PUBLIC_SNAPSHOT === "1" && (
           <p role="note" className="mb-6 border border-lavender border-l-4 border-l-teal bg-white px-4 py-3 text-sm text-indigo">
             <strong className="text-navy">Public read-only demo.</strong> You are browsing a frozen snapshot of the public datasets and DEMO DATA.
-            The live camera works here: the model runs in your browser. Recording, review and training need the backend: run SIGNFORGE locally (see the README).
+            The live camera and recording work here: the model and the automated check run in your browser, and clips you record are saved in this browser only, never sent anywhere. Training needs the backend: run SIGNFORGE locally (see the README).
           </p>
         )}
         {children}
