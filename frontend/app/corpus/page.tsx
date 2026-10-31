@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useState } from "react";
-import { api, type Project, type ReviewEvent, type ReviewStatus, type Sample, type SignClass, type Signer, when } from "@/lib/api";
+import { api, type Consent, type Project, type ReviewEvent, type ReviewStatus, type Sample, type SignClass, type Signer, when } from "@/lib/api";
 import { card, DemoBadge, ErrorBanner } from "@/components/ui";
 
 const ROLES = [
@@ -27,7 +27,8 @@ async function fetchCorpus() {
     api<SignClass[]>(`/api/sign-classes?project_id=${project.id}`),
     api<Signer[]>(`/api/signers?project_id=${project.id}`),
   ]);
-  return { project, samples, classes, signers };
+  const consents = (await Promise.all(signers.map((x) => api<Consent[]>(`/api/consents?signer_id=${x.id}`)))).flat();
+  return { project, samples, classes, signers, consents };
 }
 
 const PAGE = 50; // rows rendered at once; the corpus grows with every capture
@@ -92,6 +93,8 @@ export default function CorpusPage() {
           </div>
         </section>
       )}
+
+      {data && <SignersConsent data={data} onDone={reload} />}
 
       {data && (
         <section aria-labelledby="samples" className="space-y-3">
@@ -173,6 +176,7 @@ function SampleDetail({ sample: s, onDone }: { sample: Sample; onDone: () => voi
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const loadEvents = useCallback(() => api<ReviewEvent[]>(`/api/samples/${s.id}/reviews`)
     .then(setEvents, (e) => setError(e.message)), [s.id]);
@@ -188,6 +192,15 @@ function SampleDetail({ sample: s, onDone }: { sample: Sample; onDone: () => voi
       onDone();
     } catch (e) { setError(`Review not saved; your note is kept. ${e instanceof Error ? e.message : e}`); }
     setSaving(false);
+  }
+
+  async function remove() {
+    if (saving) return;
+    setError(""); setSaving(true);
+    try {
+      await api(`/api/samples/${s.id}`, { method: "DELETE" });
+      onDone();
+    } catch (e) { setError(`Not deleted. ${e instanceof Error ? e.message : e}`); setSaving(false); setConfirmDelete(false); }
   }
 
   const valid = /^[A-Z0-9][A-Z0-9-]{1,15}$/.test(code);
@@ -232,6 +245,19 @@ function SampleDetail({ sample: s, onDone }: { sample: Sample; onDone: () => voi
         </div>
         {!valid && <p className="text-xs">Enter a reviewer code (e.g. R-01) to enable review actions.</p>}
         {error && <p role="alert" className="text-red-900">{error}</p>}
+        <div className="border-t border-lavender pt-3">
+          {confirmDelete ? (
+            <div className="space-y-2">
+              <p className="text-xs text-red-900">Deleting erases this sample&apos;s landmarks and review history for good.
+                {(s.review_status === "approved" || s.split === "test") && " It is approved or in the frozen test set, so model results that used it can no longer be reproduced."}
+                {" "}Models already trained on it are not retrained.</p>
+              <div className="flex gap-2">
+                <button disabled={saving} className="rounded-lg bg-red-700 px-3 py-1 text-white disabled:opacity-60" onClick={remove}>{saving ? "Deleting…" : "Delete permanently"}</button>
+                <button disabled={saving} className="rounded-lg border border-indigo px-3 py-1 text-indigo" onClick={() => setConfirmDelete(false)}>Keep it</button>
+              </div>
+            </div>
+          ) : <button className="rounded-lg border border-red-700 px-3 py-1 text-red-800" onClick={() => setConfirmDelete(true)}>Delete this sample</button>}
+        </div>
         {events.length > 0 && (
           <ul className="text-xs">{events.map((e) => (
             <li key={e.id} className="break-words">{when(e.created_at)}: <strong>{e.decision.replaceAll("_", " ")}</strong> by {e.reviewer_code} ({roleLabel(e.reviewer_role)}){e.note && `: “${e.note}”`}</li>
@@ -239,5 +265,62 @@ function SampleDetail({ sample: s, onDone }: { sample: Sample; onDone: () => voi
         )}
       </div>
     </div>
+  );
+}
+
+function SignersConsent({ data, onDone }: { data: Awaited<ReturnType<typeof fetchCorpus>>; onDone: () => void }) {
+  const [asking, setAsking] = useState<number | null>(null);
+  const [erase, setErase] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function withdraw(id: number) {
+    if (busy) return;
+    setError(""); setBusy(true);
+    try {
+      await api(`/api/consents/${id}/withdraw`, { body: { delete_samples: erase } });
+      setAsking(null);
+      onDone();
+    } catch (e) { setError(`Consent not withdrawn. ${e instanceof Error ? e.message : e}`); }
+    setBusy(false);
+  }
+
+  return (
+    <section aria-labelledby="consents" className={card}>
+      <h2 id="consents" className="font-semibold">Signers &amp; consent</h2>
+      <p className="mt-1 max-w-[58ch] text-xs">Withdrawing consent stops all further use of a signer&apos;s samples: new recordings, model training and public replay.
+        You can also erase the stored landmarks. Models already trained are not retrained, and files already exported are outside this app&apos;s control.</p>
+      {!data.consents.length && <p className="mt-2 text-sm">No signers have given consent yet.</p>}
+      <ul className="mt-3 space-y-2">
+        {data.consents.map((c) => {
+          const signer = data.signers.find((x) => x.id === c.signer_id);
+          const n = data.samples.filter((x) => x.consent_id === c.id).length;
+          const active = c.status === "active";
+          return (
+            <li key={c.id} className="rounded-lg border border-lavender/70 p-3 text-sm">
+              <div className="flex flex-wrap items-center gap-2">
+                <strong>{signer?.code ?? `#${c.signer_id}`}</strong>
+                <span className={`rounded-md px-2 py-0.5 text-xs ${active ? "bg-teal/15 text-teal" : "bg-red-100 text-red-900"}`}>{active ? "Consent active" : "Consent withdrawn"}</span>
+                <span className="text-xs">allowed: {c.allowed_uses.join(", ").replaceAll("_", " ")} · {n} sample{n === 1 ? "" : "s"} stored</span>
+                {active && asking !== c.id && (
+                  <button className="ml-auto rounded-lg border border-red-700 px-3 py-1 text-red-800" onClick={() => { setAsking(c.id); setError(""); }}>Withdraw consent</button>
+                )}
+              </div>
+              {asking === c.id && (
+                <div className="mt-3 space-y-2">
+                  <label className="flex gap-2 text-sm"><input type="checkbox" checked={erase} onChange={(e) => setErase(e.target.checked)} />
+                    <span>Also delete this consent&apos;s {n} stored sample{n === 1 ? "" : "s"} (landmarks and reviews). This can&apos;t be undone.</span></label>
+                  <div className="flex gap-2">
+                    <button disabled={busy} className="rounded-lg bg-red-700 px-3 py-1 text-white disabled:opacity-60" onClick={() => withdraw(c.id)}>{busy ? "Withdrawing…" : "Confirm withdrawal"}</button>
+                    <button disabled={busy} className="rounded-lg border border-indigo px-3 py-1 text-indigo" onClick={() => setAsking(null)}>Cancel</button>
+                  </div>
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {error && <p role="alert" className="mt-2 text-sm text-red-900">{error}</p>}
+    </section>
   );
 }

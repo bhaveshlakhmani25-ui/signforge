@@ -4,7 +4,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 
-from app.api.projects import get_or_404, save
+from app.api.projects import delete_sample, get_or_404, save
 from app.db import get_session
 from app.db.models import ConsentRecord, ReviewEvent, Sample, SignClass, Signer
 from app.schemas import CaptureIn, ReviewIn
@@ -97,3 +97,9 @@ def review(sample_id: int, body: ReviewIn, session: Session = Depends(get_sessio
     session.add(ReviewEvent(sample_id=sample_id, **body.model_dump()))
     sample.review_status = body.decision
     return save(session, sample)
+
+
+@router.delete("/{sample_id}", status_code=204)
+def delete(sample_id: int, session: Session = Depends(get_session)):
+    delete_sample(session, get_or_404(session, Sample, sample_id))
+    session.commit()

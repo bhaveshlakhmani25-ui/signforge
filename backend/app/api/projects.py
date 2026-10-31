@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 
 from app.db import get_session
-from app.db.models import ConsentRecord, Project, SignClass, Signer
-from app.schemas import ConsentIn, ProjectIn, SignClassIn, SignerIn
+from app.db.models import ConsentRecord, Project, ReviewEvent, Sample, SignClass, Signer
+from app.schemas import ConsentIn, ProjectIn, SignClassIn, SignerIn, WithdrawIn
+from app.services.storage import delete_features
 
 router = APIRouter(prefix="/api")
 
@@ -20,6 +21,15 @@ def save(session: Session, obj):
     session.commit()
     session.refresh(obj)
     return obj
+
+
+def delete_sample(session: Session, sample: Sample) -> None:
+    """Erase a sample's landmark file, its review events and its row. The caller commits.
+    Models already trained on it are not retrained; their runs keep the ids but not the data."""
+    delete_features(sample.feature_path)
+    for e in session.exec(select(ReviewEvent).where(ReviewEvent.sample_id == sample.id)).all():
+        session.delete(e)
+    session.delete(sample)
 
 
 @router.get("/projects")
@@ -64,3 +74,18 @@ def list_consents(signer_id: int, session: Session = Depends(get_session)):
 def create_consent(body: ConsentIn, session: Session = Depends(get_session)):
     get_or_404(session, Signer, body.signer_id)
     return save(session, ConsentRecord(**body.model_dump(exclude={"confirmed"}), raw_video_retained=False))
+
+
+@router.post("/consents/{consent_id}/withdraw")
+def withdraw_consent(consent_id: int, body: WithdrawIn, session: Session = Depends(get_session)):
+    """Stops all future use (capture, training, public replay). Optionally erases the samples recorded under it."""
+    consent = get_or_404(session, ConsentRecord, consent_id)
+    consent.status = "withdrawn"
+    session.add(consent)
+    deleted = 0
+    if body.delete_samples:
+        for s in session.exec(select(Sample).where(Sample.consent_id == consent_id)).all():
+            delete_sample(session, s)
+            deleted += 1
+    session.commit()
+    return {"status": consent.status, "deleted_samples": deleted}

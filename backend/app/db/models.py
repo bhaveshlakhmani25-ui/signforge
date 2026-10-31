@@ -48,6 +48,8 @@ class ConsentRecord(SQLModel, table=True):
 
 
 class Sample(SQLModel, table=True):
+    # Ids of deleted samples must never be reused: ModelRun keeps train/test sample ids as provenance.
+    __table_args__ = {"sqlite_autoincrement": True}
     id: Optional[int] = Field(default=None, primary_key=True)
     project_id: int = Field(foreign_key="project.id", index=True)
     sign_class_id: int = Field(foreign_key="signclass.id", index=True)

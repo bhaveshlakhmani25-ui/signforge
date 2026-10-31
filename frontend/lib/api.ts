@@ -38,7 +38,7 @@ export async function api<T>(path: string, init?: { method?: string; body?: unkn
       : Array.isArray(detail) ? detail.map((d: { loc: string[]; msg: string }) => `${d.loc.slice(1).join(".")}: ${d.msg}`).join("; ")
       : res.status >= 500 ? `The backend hit an error (HTTP ${res.status}). Try again; if it repeats, check the backend log.`
       : `Request failed (HTTP ${res.status}).`;
-    throw new Error(msg);
+    throw Object.assign(new Error(msg), { status: res.status });
   }
   return data as T;
 }
@@ -55,3 +55,7 @@ export type ModelRun = {
   metrics: { accuracy?: number | null; macro_f1?: number | null; macro_f1_over?: string; per_class?: Record<string, ClassMetrics>;
              confusion_matrix?: number[][]; labels?: number[]; n_test?: number; n_train?: number; train_classes?: number[] };
 };
+
+// Next-sample queue (the ranker's output; contract agreed with the backend pair). `uncertainty` is null until a model exists.
+export type QueueItem = { sign_id: number; gloss: string; priority: number; coverage_gap: number; signer_gap: number; uncertainty: number | null; reason: string };
+export type Queue = { formula: string; uncertainty_available: boolean; items: QueueItem[] };
