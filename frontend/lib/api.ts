@@ -1,5 +1,5 @@
 // Public, non-secret base URL of the local FastAPI backend.
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export type Project = { id: number; name: string; target_language: string; domain: string };
 export type SignClass = { id: number; project_id: number; gloss: string; prompt_text: string; dialect_note: string };

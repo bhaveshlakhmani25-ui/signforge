@@ -218,7 +218,9 @@ export default function Landing() {
             <p className="f-mono text-xs uppercase tracking-[0.14em] text-[#efeee9]/50">Explore</p>
             <ul className="mt-4 space-y-2.5 text-[1.05rem]">
               {[["#readings", "Readings"], ["#method", "How it works"], ["#evidence", "Evidence"], ["/capture", "Record a sign"], ["/corpus", "Corpus & review"]].map(([h, l]) => (
-                <li key={h}><a href={h} className="text-[#efeee9]/80 hover:text-[#f2a33a]">{l}</a></li>
+                <li key={h}>{h.startsWith("/")
+                  ? <Link href={h} className="text-[#efeee9]/80 hover:text-[#f2a33a]">{l}</Link>
+                  : <a href={h} className="text-[#efeee9]/80 hover:text-[#f2a33a]">{l}</a>}</li>
               ))}
             </ul>
           </nav>

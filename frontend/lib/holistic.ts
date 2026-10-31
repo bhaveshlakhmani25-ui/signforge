@@ -2,7 +2,8 @@ import { FilesetResolver, HolisticLandmarker, type HolisticLandmarkerResult } fr
 import type { Frame } from "./api";
 
 export const EXTRACTOR = "@mediapipe/tasks-vision@1.1.0 HolisticLandmarker (float16)";
-const MODEL_URL = "/models/holistic_landmarker.task"; // fetched by `npm run setup:models`
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? ""; // "" locally, "/signforge" on GitHub Pages
+const MODEL_URL = `${BASE}/models/holistic_landmarker.task`; // fetched by `npm run setup:models`
 
 let loaded: Promise<{ landmarker: HolisticLandmarker; sha256: string; delegate: "GPU" | "CPU" }> | null = null;
 // The landmarker is shared by every recording, and MediaPipe rejects a timestamp <= the last one it saw.
@@ -15,7 +16,7 @@ export function loadHolistic() {
     const buf = new Uint8Array(await (await fetch(MODEL_URL)).arrayBuffer());
     const digest = await crypto.subtle.digest("SHA-256", buf);
     const sha256 = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
-    const vision = await FilesetResolver.forVisionTasks("/models");
+    const vision = await FilesetResolver.forVisionTasks(`${BASE}/models`);
     // GPU runs the model several times faster than CPU, so more frames reach the tracker and fast hand movement
     // is not lost between frames. Confidence thresholds stay at MediaPipe's defaults, the same as the INCLUDE import.
     for (const delegate of ["GPU", "CPU"] as const) {
