@@ -16,7 +16,7 @@ export default function ProjectSwitcher() {
   return (
     <label className="block px-3 pb-3 text-xs text-lavender">
       Project
-      <select value={current} className="mt-1 block w-full rounded-lg border border-lavender/40 bg-navy px-2 py-1.5 text-sm text-white"
+      <select value={current} className="mt-1 block w-full border border-lavender/40 bg-navy px-2 py-1.5 text-sm text-white"
               onChange={(e) => { chooseProject(Number(e.target.value)); location.reload(); }}>
         {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
       </select>

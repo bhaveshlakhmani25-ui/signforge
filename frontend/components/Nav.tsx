@@ -16,7 +16,7 @@ export default function Nav() {
         const active = path.startsWith(href);
         return (
           <Link key={href} href={href} aria-current={active ? "page" : undefined}
-                className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm ${active ? "bg-indigo text-white" : "text-lavender hover:bg-white/10 hover:text-white"}`}>
+                className={`whitespace-nowrap px-3 py-2 text-sm ${active ? "bg-[#efeee9] font-semibold text-navy" : "text-lavender hover:bg-white/10 hover:text-white"}`}>
             {label}
           </Link>
         );
@@ -24,7 +24,7 @@ export default function Nav() {
       <p className="hidden px-3 pt-4 pb-1 text-xs uppercase tracking-wider text-lavender/60 md:block">Planned</p>
       {PLANNED.map((label) => (
         <span key={label} title="Not built yet"
-              className="hidden whitespace-nowrap rounded-lg px-3 py-2 text-sm text-lavender/60 md:block">
+              className="hidden whitespace-nowrap px-3 py-2 text-sm text-lavender/60 md:block">
           {label}<span className="sr-only"> (planned, not built yet)</span>
         </span>
       ))}

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Chronograph from "@/components/Chronograph";
 import { api, type ActiveLearningQueueResponse, type ModelRun, type Project, type Sample, type SignClass } from "@/lib/api";
 
@@ -54,7 +54,8 @@ async function loadReadings(): Promise<Readings> {
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-const NAV = [["#method", "Method"], ["#readings", "Readings"], ["#evidence", "Evidence"], ["#observers", "Team"]] as const;
+
+const NAV = [["#readings", "Readings"], ["#story", "Why"], ["#method", "How it works"], ["#evidence", "Evidence"]] as const;
 
 const LOOP = [
   ["Consent", "A pseudonymous signer code and a purpose-specific consent record, before the camera turns on."],
@@ -63,14 +64,7 @@ const LOOP = [
   ["Model check", "A model trained on INCLUDE scores how closely the clip matches the dataset. It never calls a sign correct."],
   ["Human review", "People approve, reject or ask for a recapture. Linguistic validation stays with native and Deaf signers."],
   ["Train and measure", "A small model retrains on approved clips and is measured on a test set frozen before collection."],
-  ["Record next", "Coverage gaps and missing signers rank the next sign; model uncertainty joins once a model is trained on the project."],
-] as const;
-
-const OBSERVERS = [
-  ["Tashvi Adhlakha", "Team Leader", "Next-sample ranker and queue, external datasets; export (in progress)."],
-  ["Bhavesh Lakhmani", "", "Capture and workbench, deletion and consent withdrawal, the model check."],
-  ["Reuben Raju", "", "Simulation harness and benchmark (in progress), transfer-learning tests."],
-  ["Aakarshi Dwivedi", "", "Dataset licensing, the INCLUDE import, recording day, acceptance testing."],
+  ["Record next", "Coverage gaps and missing signers rank the next sign. Model uncertainty joins once a model is trained on the project."],
 ] as const;
 
 export default function Landing() {
@@ -80,6 +74,7 @@ export default function Landing() {
 
   const run = r?.run, cal = run?.metrics.calibration;
   const pending = offline ? "Backend offline" : "Reading…";
+  const missing = offline ? "The backend is offline, so this reading is missing." : "Appears once a calibrated model has been trained.";
 
   return (
     <div className="f-body bg-[#0c0c0b] text-[#efeee9] selection:bg-[#f2a33a] selection:text-[#0c0c0b]">
@@ -88,10 +83,8 @@ export default function Landing() {
       <header className="sticky top-0 z-40 border-b border-[#efeee9]/15 bg-[#0c0c0b]/90 backdrop-blur-sm">
         <div className="mx-auto flex max-w-[1400px] items-center gap-8 px-5 py-3.5 md:px-10">
           <Link href="/" className="f-display text-lg font-bold uppercase tracking-[0.22em]">Signforge</Link>
-          <nav aria-label="Plates" className="ml-auto hidden gap-8 text-sm text-[#efeee9]/70 md:flex">
-            {NAV.map(([h, l]) => (
-              <a key={h} href={h} className="hover:text-[#efeee9]">{l}</a>
-            ))}
+          <nav aria-label="Sections" className="ml-auto hidden gap-8 text-base text-[#efeee9]/75 md:flex">
+            {NAV.map(([h, l]) => <a key={h} href={h} className="hover:text-[#efeee9]">{l}</a>)}
           </nav>
           <Link href="/dashboard" className="ml-auto border border-[#efeee9]/70 px-4 py-2 text-sm font-semibold transition-colors hover:border-[#f2a33a] hover:bg-[#f2a33a] hover:text-[#0c0c0b] md:ml-0">
             <span className="sm:hidden">Dashboard</span><span className="hidden sm:inline">Open the dashboard</span>
@@ -100,224 +93,159 @@ export default function Landing() {
       </header>
 
       <main id="main">
-        {/* Plate I: the sign as a chronophotograph. */}
-        <section aria-labelledby="plate-1" className="relative overflow-hidden">
+        {/* The opening plate: a real sign as a chronophotograph. */}
+        <section aria-labelledby="hero" className="relative overflow-hidden">
           <div aria-hidden className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(239,238,233,0.05)_1px,transparent_1px)] bg-[length:64px_100%]" />
           <div className="relative mx-auto max-w-[1400px] px-5 pt-10 md:px-10 md:pt-12">
-            <h1 id="plate-1" className="f-display max-w-[13ch] text-[clamp(3.1rem,7.4vw,6.6rem)] font-semibold leading-[0.92] tracking-[-0.02em] [text-wrap:balance]">
+            <h1 id="hero" className="f-display max-w-[13ch] text-[clamp(3.1rem,7.4vw,6.6rem)] font-semibold leading-[0.92] tracking-[-0.02em] [text-wrap:balance]">
               Know which sign to record <em className="font-medium">next.</em>
             </h1>
           </div>
-          <figure className="relative mt-6">
-            <div className="h-[clamp(220px,27vw,360px)] border-y border-[#efeee9]/12">
-              <Chronograph sampleId={offline ? -1 : r?.plateId ?? null}
-                           label="Chronophotograph: eleven faint exposures of the sign HELLO spread across the plate, with a bright figure replaying the clip as a shutter line crosses." />
+          <div className="relative mt-6 h-[clamp(220px,27vw,360px)] border-y border-[#efeee9]/12">
+            <Chronograph sampleId={offline ? -1 : r?.plateId ?? null}
+                         label="A signer's HELLO drawn as a long exposure: faint stick figures across the plate, with a bright figure replaying the sign." />
+          </div>
+          <div className="relative mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-6 px-5 py-8 md:px-10">
+            <p className="max-w-[40ch] text-[clamp(1.2rem,1.7vw,1.45rem)] leading-snug">
+              SIGNFORGE checks every sign clip, measures what a model learns from it, and points to the next sign to record.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Link href="/dashboard" className="bg-[#efeee9] px-6 py-3.5 text-lg font-semibold text-[#0c0c0b] transition-colors hover:bg-[#f2a33a]">Open the dashboard</Link>
+              <a href="#method" className="border border-[#efeee9]/40 px-6 py-3.5 text-lg font-semibold transition-colors hover:border-[#efeee9]">How it works</a>
             </div>
-            <figcaption className="mx-auto grid max-w-[1400px] gap-6 px-5 py-6 md:grid-cols-[1fr_auto] md:items-end md:px-10">
-              <p className="max-w-[62ch] text-[0.95rem] leading-relaxed text-[#efeee9]/75">
-                <span className="f-display mr-2 text-lg italic text-[#efeee9]">Pl. I.</span>
-                HELLO in Indian Sign Language{r?.plateFrames ? `, ${r.plateFrames} frames` : ""}, from the INCLUDE dataset (CC BY 4.0).
-                Drawn from stored body and hand landmarks: SIGNFORGE keeps the motion, never the video. It checks every clip like this one,
-                learns from it, and tells a community which sign to collect next.
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <Link href="/dashboard" className="bg-[#efeee9] px-5 py-3 font-semibold text-[#0c0c0b] transition-colors hover:bg-[#f2a33a]">Open the dashboard</Link>
-                <a href="#method" className="border border-[#efeee9]/40 px-5 py-3 font-semibold transition-colors hover:border-[#efeee9]">How it works</a>
-              </div>
-            </figcaption>
-          </figure>
+          </div>
         </section>
 
-        {/* Plate II: live readings, printed on silver-gelatin stock. */}
-        <section id="readings" aria-labelledby="plate-2" className="scroll-mt-16 bg-[#d6d5cf] text-[#0c0c0b]">
-          <div className="mx-auto max-w-[1400px] px-5 py-20 md:px-10">
-            <div className="flex flex-wrap items-baseline justify-between gap-4 border-b-2 border-[#0c0c0b] pb-4">
-              <h2 id="plate-2" className="f-display text-[clamp(2rem,4vw,3.4rem)] font-semibold leading-none">
-                <span className="mr-3 italic font-medium">Pl. II.</span>The readings
-              </h2>
-              <p className="f-mono text-xs uppercase tracking-[0.12em] text-[#0c0c0b]/70">{offline ? "Backend offline" : r ? "Read live from the app" : "Reading…"}</p>
+        {/* Live readings, on silver-gelatin print stock. */}
+        <section id="readings" aria-labelledby="readings-h" className="scroll-mt-16 bg-[#d6d5cf] text-[#0c0c0b]">
+          <div className="mx-auto max-w-[1200px] px-5 py-20 md:px-10 md:py-24">
+            <div className="flex flex-wrap items-baseline justify-between gap-4">
+              <h2 id="readings-h" className="f-display text-[clamp(2.2rem,4.4vw,3.8rem)] font-semibold leading-none">The readings</h2>
+              <p className="f-mono text-sm uppercase tracking-[0.1em] text-[#0c0c0b]/70">{offline ? "Backend offline" : r ? "Live from the app" : "Reading…"}</p>
             </div>
-            <ol>
-              <Reading n="a" q="Is this clip good?" built="Consent, in-browser landmarks, and an automated check that explains every failure."
+            <ol className="mt-10 border-t-2 border-[#0c0c0b]">
+              <Reading q="Is this clip good?" built="Consent, in-browser landmarks and an automated check that explains every failure."
                        value={r ? `${r.recorded} recorded` : pending}
-                       note={r ? `+ ${r.imported} imported from INCLUDE · ${r.passed} of ${r.recorded + r.imported} passed the check` : undefined}
-                       state="Running" />
-              <Reading n="b" q="Does it match the dataset?" built="A model trained on INCLUDE scores each new clip. Temperature-calibrated, but not yet reliable."
+                       note={r ? `plus ${r.imported} imported from INCLUDE` : undefined} state="Running" />
+              <Reading q="Does it match the dataset?" built="A model trained on INCLUDE scores each new clip. It is calibrated, but not yet reliable."
                        value={run?.metrics.accuracy != null ? pct(run.metrics.accuracy) : r ? "Not evaluated" : pending}
-                       note={run ? `top-1 on ${run.metrics.n_test} held-out clips (run #${run.id})` : undefined}
-                       state={offline ? "Backend offline" : cal ? (cal.reliability_passed ? "Calibrated" : "Calibration failed · auto-accept off") : "Not evaluated"}
+                       note={run ? `on ${run.metrics.n_test} unseen clips` : undefined}
+                       state={offline ? "Backend offline" : cal ? (cal.reliability_passed ? "Calibrated" : "Calibration failed") : "Not evaluated"}
                        warn={!!cal && !cal.reliability_passed} />
-              <Reading n="c" q="Is this sign enough?" built="A per-sign verdict from coverage, signer count and the learning curve."
-                       value="No verdict" note="needs the simulation results first" state="Not built yet" warn href="#evidence" />
-              <Reading n="d" q="What should we record next?" built="A ranked queue from coverage gaps, missing signers and, later, model uncertainty."
+              <Reading q="Is this sign enough?" built="A per-sign verdict from coverage, signers and the learning curve."
+                       value="No verdict" note="needs the simulation first" state="Not built yet" warn />
+              <Reading q="What should we record next?" built="A ranked queue from coverage gaps and missing signers."
                        value={r?.next?.gloss ?? (r ? "Nothing queued" : pending)}
-                       note={r?.next ? (r.next.ties ? `${r.next.project}: tied with ${r.next.ties} other signs` : `${r.next.project}: top of the queue`) : undefined}
-                       state="Running" href="#record-next" last />
+                       note={r?.next?.ties ? `tied with ${r.next.ties} other signs` : undefined} state="Running" />
             </ol>
           </div>
         </section>
 
-        {/* Plate III: why. Sources sit in the margin, as in a monograph. */}
-        <section id="story" aria-labelledby="plate-3" className="scroll-mt-16">
-          <div className="mx-auto grid max-w-[1400px] gap-10 px-5 py-24 md:px-10 lg:grid-cols-[5fr_6fr_3fr]">
-            <h2 id="plate-3" className="f-display text-[clamp(2.2rem,4vw,3.6rem)] font-semibold leading-[1.02] [text-wrap:balance]">
-              <span className="block text-[0.5em] italic font-medium text-[#efeee9]/55">Pl. III.</span>
+        {/* Why. */}
+        <section id="story" aria-labelledby="story-h" className="scroll-mt-16">
+          <div className="mx-auto grid max-w-[1200px] gap-12 px-5 py-24 md:px-10 lg:grid-cols-[5fr_7fr]">
+            <h2 id="story-h" className="f-display text-[clamp(2.4rem,4.4vw,3.8rem)] font-semibold leading-[1.02] [text-wrap:balance]">
               Sign-language AI is held back by data, not by algorithms.
             </h2>
-            <div className="max-w-[60ch] space-y-5 text-lg leading-relaxed text-[#efeee9]/85">
+            <div className="max-w-[56ch] space-y-6 text-[1.2rem] leading-relaxed text-[#efeee9]/90">
               <p>More than 300 sign languages are used by over 70 million Deaf people.<Ref n={1} /> Most have almost no data a model can learn from,
-                and what exists is scattered: one survey indexed 120 datasets across 35 sign languages, recorded and annotated in ways that do not line up.<Ref n={2} /></p>
-              <p>Indian Sign Language is not starting from zero. But recent work points to the same gaps: regional variation, few signers,
+                and what exists is scattered across datasets that do not line up.<Ref n={2} /></p>
+              <p>Indian Sign Language has research datasets, but the same gaps keep returning: regional variation, few signers,
                 and data collected without a clear record of consent.<Ref n={3} /></p>
-              <p className="text-[#efeee9]">So we did not build another translator. We built the instrument that comes before one: it measures the data a community
-                already has, and tells it what to record next.</p>
-            </div>
-            <aside aria-label="Sources" className="space-y-4 border-l border-[#efeee9]/20 pl-5 text-sm leading-relaxed text-[#efeee9]/60">
-              <p id="ref-1"><span className="f-display italic text-[#efeee9]">1.</span> United Nations, International Day of Sign Languages.</p>
-              <p id="ref-2"><span className="f-display italic text-[#efeee9]">2.</span> Ni et al., Sign-Language Datasets at Scale, ACL 2026.</p>
-              <p id="ref-3"><span className="f-display italic text-[#efeee9]">3.</span> Wadhera, Mahmud &amp; Dhaneshwar, Towards Inclusive Sign Language Recognition, CVPR Workshops 2026.</p>
-            </aside>
-          </div>
-        </section>
-
-        {/* Plate IV: the method, drawn as the closed loop it is. */}
-        <section id="method" aria-labelledby="plate-4" className="scroll-mt-16 border-t border-[#efeee9]/15">
-          <div className="mx-auto grid max-w-[1400px] items-center gap-14 px-5 py-24 md:px-10 lg:grid-cols-[5fr_6fr]">
-            <LoopFigure />
-            <div>
-              <h2 id="plate-4" className="f-display text-[clamp(2.2rem,4vw,3.6rem)] font-semibold leading-[1.02]">
-                <span className="mr-3 italic font-medium text-[#efeee9]/55">Pl. IV.</span>The method
-              </h2>
-              <p className="mt-3 max-w-[52ch] text-[#efeee9]/70">One loop. Each turn adds clips, re-measures the model, and points at the next gap.</p>
-              <ol className="mt-8 border-t border-[#efeee9]/15">
-                {LOOP.map(([t, d], i) => (
-                  <li key={t} className="grid grid-cols-[2.25rem_1fr] gap-x-3 border-b border-[#efeee9]/15 py-4 md:grid-cols-[2.25rem_10.5rem_1fr]">
-                    <span className="f-display pt-0.5 italic text-[#f2a33a]">{i + 1}</span>
-                    <h3 className="font-semibold">{t}</h3>
-                    <p className="col-start-2 mt-1 max-w-[50ch] text-[0.95rem] leading-relaxed text-[#efeee9]/75 md:col-start-3 md:mt-0">{d}</p>
-                  </li>
-                ))}
-              </ol>
+              <p className="text-[#efeee9]">So we did not build another translator. We built the instrument that comes before one.</p>
             </div>
           </div>
         </section>
 
-        {/* Plate V: findings, failures included. */}
-        <section id="evidence" aria-labelledby="plate-5" className="scroll-mt-16 bg-[#d6d5cf] text-[#0c0c0b]">
-          <div className="mx-auto max-w-[1400px] px-5 py-24 md:px-10">
-            <h2 id="plate-5" className="f-display max-w-[18ch] text-[clamp(2.2rem,4vw,3.6rem)] font-semibold leading-[1.02] [text-wrap:balance]">
-              <span className="mr-3 italic font-medium">Pl. V.</span>What we measured, including what did not work.
+        <section id="method" aria-labelledby="method-h" className="scroll-mt-16 border-t border-[#efeee9]/15">
+          <div className="mx-auto max-w-[1200px] px-5 py-24 md:px-10">
+            <h2 id="method-h" className="f-display text-[clamp(2.4rem,4.4vw,3.8rem)] font-semibold leading-none">How it works</h2>
+            <p className="mt-4 max-w-[50ch] text-[1.2rem] text-[#efeee9]/75">One loop. Each turn adds clips, re-measures the model and points at the next gap.</p>
+            <Method />
+          </div>
+        </section>
+
+        {/* Findings, failures included. */}
+        <section id="evidence" aria-labelledby="evidence-h" className="scroll-mt-16 bg-[#d6d5cf] text-[#0c0c0b]">
+          <div className="mx-auto max-w-[1200px] px-5 py-24 md:px-10">
+            <h2 id="evidence-h" className="f-display max-w-[16ch] text-[clamp(2.4rem,4.4vw,3.8rem)] font-semibold leading-[1.02] [text-wrap:balance]">
+              What we measured, including what did not work.
             </h2>
             <dl className="mt-12 border-t-2 border-[#0c0c0b]">
-              <Finding fig="1" title="The model on unseen sessions"
-                       value={run?.metrics.accuracy != null ? pct(run.metrics.accuracy) : offline ? "Offline" : "—"}
-                       body={run ? `Top-1 accuracy on ${run.metrics.n_test} INCLUDE clips from recording sessions the model never saw (macro-F1 ${run.metrics.macro_f1?.toFixed(2)}). INCLUDE has no signer IDs, so this is not a signer-independent result.`
-                         : offline ? "The backend is offline, so this reading is missing." : "Appears once a calibrated model has been trained."}
+              <Finding title="Accuracy on unseen recording sessions" value={run?.metrics.accuracy != null ? pct(run.metrics.accuracy) : offline ? "Offline" : "—"}
+                       body={run ? `${run.metrics.n_test} INCLUDE clips the model never saw. INCLUDE has no signer IDs, so this is not a signer-independent result.` : missing}
                        source={run ? `Live · run #${run.id}` : "Live"} />
-              <Finding fig="2" title="Calibration"
-                       value={cal ? `${cal.test_before.ece.toFixed(2)} → ${cal.test_after.ece.toFixed(2)}` : offline ? "Offline" : "—"}
-                       body={cal ? `Temperature scaling cut the calibration error on test clips${cal.reliability_passed ? ` below the ${cal.max_ece.toFixed(2)} limit.` : `, but not below the ${cal.max_ece.toFixed(2)} limit. The model's confidence still overstates how often it is right, so automatic acceptance stays off and every clip goes to a person.`}`
-                         : offline ? "The backend is offline, so this reading is missing." : "Appears once a calibrated model has been trained."}
+              <Finding title="Calibration" value={cal ? `${cal.test_before.ece.toFixed(2)} → ${cal.test_after.ece.toFixed(2)}` : offline ? "Offline" : "—"}
+                       body={cal ? (cal.reliability_passed ? `Below the ${cal.max_ece.toFixed(2)} limit.` : `Improved, but not below the ${cal.max_ece.toFixed(2)} limit. So automatic acceptance stays off and every clip goes to a person.`) : missing}
                        source={cal ? `Live · run #${run!.id}` : "Live"} warn={!!cal && !cal.reliability_passed} />
-              <Finding fig="3" title={`Our own ${r?.teamMatch?.gloss || "team"} recordings`}
-                       value={r?.teamMatch ? pct(r.teamMatch.median) : offline ? "Offline" : "—"}
-                       body={r?.teamMatch ? `Median match against the dataset across ${r.teamMatch.n} of our clips. INCLUDE signers keep both hands in view; most of our clips show one. Surfacing exactly this kind of gap is what the instrument is for.`
-                         : offline ? "The backend is offline, so this reading is missing." : "Appears once team clips have been scored."}
-                       source="Live · cause analysed 31 Oct 2026" warn={!!r?.teamMatch && r.teamMatch.median < 0.5} />
-              <Finding fig="4" title="Is a sign enough?" value="Not built"
-                       body="The per-sign sufficiency verdict needs learning curves from the simulation, which is still in progress. Until then the app shows coverage only."
-                       source="Planned" warn />
-              <Finding fig="5" title="Browser and Python extraction agree" value="16 / 18"
-                       body="The same INCLUDE clips extracted in the browser and in Python gave the same top prediction 16 times out of 18."
-                       source="docs/EXTRACTOR_COMPARISON.md · 31 Oct 2026" />
-              <Finding fig="6" title="Transfer learning" value="Blocked"
-                       body="No pretrained checkpoint has been verified as compatible with our landmark format, so we claim no transfer result."
+              <Finding title={`Our own ${r?.teamMatch?.gloss || "team"} clips`} value={r?.teamMatch ? pct(r.teamMatch.median) : offline ? "Offline" : "—"}
+                       body={r?.teamMatch ? `Median match against the dataset across ${r.teamMatch.n} clips. INCLUDE signers keep both hands in view; ours mostly show one. Finding gaps like this is the point.` : offline ? "The backend is offline, so this reading is missing." : "Appears once team clips have been scored."}
+                       source="Live" warn={!!r?.teamMatch && r.teamMatch.median < 0.5} />
+              <Finding title="Transfer learning" value="Blocked"
+                       body="No pretrained checkpoint has been verified as compatible with our landmarks, so we claim no transfer result."
                        source="docs/MODEL_CARD.md" warn />
             </dl>
-            <p className="mt-10 max-w-[64ch] leading-relaxed">
-              <span className="font-semibold">What SIGNFORGE is not:</span> a translator, a validated ISL corpus, or proof that a sign is correct.
-              A match score says how closely a clip resembles the dataset. Whether it is good signing is decided by people, ideally native and Deaf signers.
-            </p>
           </div>
         </section>
 
-        <section id="observers" aria-labelledby="plate-6" className="scroll-mt-16">
-          <div className="mx-auto max-w-[1400px] px-5 py-24 md:px-10">
-            <h2 id="plate-6" className="f-display text-[clamp(2.2rem,4vw,3.6rem)] font-semibold leading-none">
-              <span className="mr-3 italic font-medium text-[#efeee9]/55">Observers.</span>Team Claude&apos;s Clan
-            </h2>
-            <ul className="mt-12 grid gap-x-12 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
-              {OBSERVERS.map(([name, role, did]) => (
-                <li key={name} className="border-t border-[#efeee9]/40 pt-4">
-                  <p className="f-display text-2xl font-semibold">{name}</p>
-                  {role && <p className="f-mono mt-1 text-xs uppercase tracking-[0.12em] text-[#f2a33a]">{role}</p>}
-                  <p className="mt-2 leading-relaxed text-[#efeee9]/75">{did}</p>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-
-        <section id="record-next" aria-labelledby="close" className="scroll-mt-16 border-t border-[#efeee9]/15">
-          <div className="mx-auto max-w-[1400px] px-5 py-24 md:px-10">
+        <section id="record-next" aria-labelledby="close" className="scroll-mt-16">
+          <div className="mx-auto max-w-[1200px] px-5 py-24 md:px-10">
             <h2 id="close" className="f-display max-w-[17ch] text-[clamp(2.6rem,5.6vw,5rem)] font-semibold leading-[0.98] [text-wrap:balance]">
               {r?.next ? <>Right now, the queue says: record <em className="font-medium text-[#f2a33a]">{r.next.gloss}</em>.</> : <>See the queue for yourself.</>}
             </h2>
             {r?.next && (
-              <p className="mt-5 max-w-[60ch] text-lg leading-relaxed text-[#efeee9]/75">
-                {cap(r.next.reason)}
-                {r.next.ties > 0 && ` It is tied with ${r.next.ties} other signs in ${r.next.project}: none has an approved clip yet, so any of them is an equally good next take.`}
+              <p className="mt-6 max-w-[52ch] text-[1.2rem] leading-relaxed text-[#efeee9]/80">
+                {r.next.ties > 0 ? `It is tied with ${r.next.ties} other signs in ${r.next.project}: none has an approved clip yet, so any of them is an equally good next take.` : cap(r.next.reason)}
               </p>
             )}
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/dashboard" className="bg-[#efeee9] px-5 py-3 font-semibold text-[#0c0c0b] transition-colors hover:bg-[#f2a33a]">Open the dashboard</Link>
-              <Link href="/capture" className="border border-[#efeee9]/40 px-5 py-3 font-semibold transition-colors hover:border-[#efeee9]">Record a sign</Link>
+              <Link href="/dashboard" className="bg-[#efeee9] px-6 py-3.5 text-lg font-semibold text-[#0c0c0b] transition-colors hover:bg-[#f2a33a]">Open the dashboard</Link>
+              <Link href="/capture" className="border border-[#efeee9]/40 px-6 py-3.5 text-lg font-semibold transition-colors hover:border-[#efeee9]">Record a sign</Link>
             </div>
           </div>
         </section>
       </main>
 
       <footer className="border-t border-[#efeee9]/15">
-        <p className="mx-auto max-w-[1400px] px-5 py-8 text-sm text-[#efeee9]/55 md:px-10">
-          INCLUDE: Sridhar et al., ACM Multimedia 2020, CC BY 4.0, Zenodo 4010759. Plate I is drawn from its landmarks; no video is shown or stored.
-        </p>
+        <ol className="mx-auto max-w-[1200px] space-y-1.5 px-5 py-10 text-[0.95rem] text-[#efeee9]/60 md:px-10">
+          <li id="ref-1">1. United Nations, International Day of Sign Languages.</li>
+          <li id="ref-2">2. Ni et al., Sign-Language Datasets at Scale, ACL 2026.</li>
+          <li id="ref-3">3. Wadhera, Mahmud &amp; Dhaneshwar, Towards Inclusive Sign Language Recognition, CVPR Workshops 2026.</li>
+          <li>The opening sign is HELLO from INCLUDE (Sridhar et al., ACM Multimedia 2020, CC BY 4.0), drawn from its landmarks; no video is shown or stored.</li>
+        </ol>
       </footer>
     </div>
   );
 }
 
-function Reading({ n, q, built, value, note, state, warn, href, last }: {
-  n: string; q: string; built: string; value: string; note?: string; state: string; warn?: boolean; href?: string; last?: boolean;
-}) {
-  const title = <><span className="f-display mr-2 italic font-medium text-[#0c0c0b]/55">{n}.</span>{q}</>;
+function Reading({ q, built, value, note, state, warn }: { q: string; built: string; value: string; note?: string; state: string; warn?: boolean }) {
   return (
-    <li className={`grid gap-3 py-7 md:grid-cols-[1.25fr_1.4fr_1.15fr_0.95fr] md:items-baseline md:gap-8 ${last ? "" : "border-b border-[#0c0c0b]/25"}`}>
-      <h3 className="f-display text-[1.65rem] font-semibold leading-tight">
-        {href ? <a href={href} className="underline decoration-[#0c0c0b]/30 decoration-1 underline-offset-[6px] hover:decoration-[#0c0c0b]">{title}</a> : title}
-      </h3>
-      <p className="max-w-[42ch] leading-relaxed text-[#0c0c0b]/80">{built}</p>
-      <p>
-        <span className="f-display block text-[clamp(2rem,3.4vw,3rem)] font-semibold leading-none tabular-nums">{value}</span>
-        {note && <span className="f-mono mt-2 block text-xs leading-relaxed text-[#0c0c0b]/70">{note}</span>}
-      </p>
-      <p className={`f-mono text-xs uppercase tracking-[0.1em] ${warn ? "text-[#8a4100]" : "text-[#0c0c0b]/75"}`}>
-        <span aria-hidden className={`mr-2 inline-block size-2 rounded-full align-middle ${warn ? "bg-[#c66a00]" : "bg-[#0c0c0b]"}`} />{state}
-      </p>
+    <li className="grid gap-4 border-b border-[#0c0c0b]/25 py-8 md:grid-cols-[1.3fr_1fr] md:gap-12">
+      <div>
+        <h3 className="f-display text-[clamp(1.7rem,2.4vw,2.1rem)] font-semibold leading-tight">{q}</h3>
+        <p className="mt-2 max-w-[44ch] text-[1.12rem] leading-relaxed text-[#0c0c0b]/80">{built}</p>
+      </div>
+      <div className="md:text-right">
+        <p className="f-display text-[clamp(2.2rem,3.6vw,3.2rem)] font-semibold leading-none tabular-nums">{value}</p>
+        {note && <p className="mt-2 text-[1.05rem] text-[#0c0c0b]/70">{note}</p>}
+        <p className={`f-mono mt-3 text-sm uppercase tracking-[0.08em] ${warn ? "text-[#8a4100]" : "text-[#0c0c0b]/75"}`}>
+          <span aria-hidden className={`mr-2 inline-block size-2 rounded-full align-middle ${warn ? "bg-[#c66a00]" : "bg-[#0c0c0b]"}`} />{state}
+        </p>
+      </div>
     </li>
   );
 }
 
-function Finding({ fig, title, value, body, source, warn }: { fig: string; title: string; value: string; body: string; source: string; warn?: boolean }) {
+function Finding({ title, value, body, source, warn }: { title: string; value: string; body: string; source: string; warn?: boolean }) {
   return (
-    <div className="grid gap-3 border-b border-[#0c0c0b]/25 py-8 md:grid-cols-[3rem_13rem_12rem_1fr] md:gap-8">
-      <dt className="contents">
-        <span className="f-display text-lg italic text-[#0c0c0b]/55">Fig. {fig}</span>
-        <span className="font-semibold">{title}</span>
-      </dt>
-      <dd className={`f-display whitespace-nowrap text-[1.9rem] font-semibold leading-none tabular-nums ${warn ? "text-[#8a4100]" : ""}`}>{value}</dd>
+    <div className="grid gap-4 border-b border-[#0c0c0b]/25 py-9 md:grid-cols-[1fr_1.3fr] md:gap-12">
+      <div>
+        <dt className="text-[1.15rem] font-semibold">{title}</dt>
+        <dd className={`f-display mt-2 text-[clamp(2.2rem,3.6vw,3rem)] font-semibold leading-none tabular-nums ${warn ? "text-[#8a4100]" : ""}`}>{value}</dd>
+      </div>
       <dd>
-        <p className="max-w-[62ch] leading-relaxed">{body}</p>
-        <p className="f-mono mt-2 text-xs text-[#0c0c0b]/65">{source}</p>
+        <p className="max-w-[52ch] text-[1.12rem] leading-relaxed">{body}</p>
+        <p className="f-mono mt-3 text-sm text-[#0c0c0b]/65">{source}</p>
       </dd>
     </div>
   );
@@ -327,35 +255,84 @@ function Ref({ n }: { n: number }) {
   return <sup><a href={`#ref-${n}`} className="f-display ml-0.5 italic text-[#f2a33a]" aria-label={`Source ${n}`}>{n}</a></sup>;
 }
 
-/** The loop as a closed circle: seven stages on one orbit, a safelight dot travelling round it. */
-function LoopFigure() {
+const STEP_MS = 1900; // how long each stage holds the spotlight
+
+/** The loop, played once when it scrolls into view: the dot travels 1 → 7, each stage takes the spotlight in turn,
+ *  then every stage stays readable. Reduced motion shows everything at once. */
+function Method() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [active, setActive] = useState(-1); // -1: not started or finished (all readable)
+  const [done, setDone] = useState(false);
+  const timers = useRef<number[]>([]);
+
+  const play = useCallback(() => {
+    timers.current.forEach(clearTimeout);
+    setDone(false);
+    timers.current = LOOP.map((_, i) => window.setTimeout(() => setActive(i), 300 + i * STEP_MS));
+    timers.current.push(window.setTimeout(() => { setActive(-1); setDone(true); }, 300 + LOOP.length * STEP_MS + 600));
+  }, []);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { io.disconnect(); play(); } }, { threshold: 0.45 });
+    io.observe(el);
+    const t = timers.current;
+    return () => { io.disconnect(); t.forEach(clearTimeout); };
+  }, [play]);
+
   const R = 150, C = 200;
-  const pts = LOOP.map((_, i) => {
-    const a = -Math.PI / 2 + (i / LOOP.length) * Math.PI * 2;
-    return [C + R * Math.cos(a), C + R * Math.sin(a), a] as const;
-  });
+  const angle = (i: number) => -Math.PI / 2 + (i / LOOP.length) * Math.PI * 2;
+  const dot = active >= 0 ? active : done ? LOOP.length - 1 : 0;
+
   return (
-    <figure className="mx-auto w-full max-w-[520px]">
-      <svg viewBox="-90 -10 580 420" className="w-full" role="img" aria-label="The SIGNFORGE loop: consent, landmarks, automated check, model check, human review, train and measure, record next, and back to consent.">
-        <circle cx={C} cy={C} r={R} fill="none" stroke="rgba(239,238,233,0.35)" strokeWidth="1" />
-        <circle cx={C} cy={C} r={R - 22} fill="none" stroke="rgba(239,238,233,0.12)" strokeWidth="1" strokeDasharray="2 6" />
-        {pts.map(([x, y, a], i) => {
-          const lx = C + (R + 30) * Math.cos(a), ly = C + (R + 30) * Math.sin(a);
-          const anchor = Math.abs(Math.cos(a)) < 0.2 ? "middle" : Math.cos(a) > 0 ? "start" : "end";
+    <div ref={ref} className="mt-12 grid items-center gap-12 lg:grid-cols-[5fr_6fr]">
+      <figure className="mx-auto w-full max-w-[500px]">
+        <svg viewBox="-130 -10 660 420" className="w-full" role="img" aria-label="The loop: consent, landmarks, automated check, model check, human review, train and measure, record next, and back to consent.">
+          <circle cx={C} cy={C} r={R} fill="none" stroke="rgba(239,238,233,0.35)" strokeWidth="1" />
+          {LOOP.map(([label], i) => {
+            const a = angle(i), x = C + R * Math.cos(a), y = C + R * Math.sin(a);
+            const lx = C + (R + 28) * Math.cos(a), ly = C + (R + 28) * Math.sin(a);
+            const anchor = Math.abs(Math.cos(a)) < 0.2 ? "middle" : Math.cos(a) > 0 ? "start" : "end";
+            const on = active === i;
+            return (
+              <g key={label} className="transition-opacity duration-500" opacity={active < 0 || on ? 1 : 0.35}>
+                <circle cx={x} cy={y} r={on ? 15 : 12} fill={on ? "#f2a33a" : "#0c0c0b"} stroke={on ? "#f2a33a" : "rgba(239,238,233,0.8)"} className="transition-all duration-500" />
+                <text x={x} y={y + 5} textAnchor="middle" fontSize="14" fill={on ? "#0c0c0b" : "#efeee9"} className="f-display" fontStyle="italic">{i + 1}</text>
+                <text x={lx} y={ly + 5} textAnchor={anchor} fontSize="19" fill="#efeee9" className="f-body">{label}</text>
+              </g>
+            );
+          })}
+          <g style={{ transform: `rotate(${(dot / LOOP.length) * 360}deg)`, transformOrigin: `${C}px ${C}px`, transition: "transform 900ms cubic-bezier(.22,1,.36,1)" }}>
+            <circle cx={C} cy={C - R} r="6" fill="#f2a33a" />
+          </g>
+          <text x={C} y={C - 4} textAnchor="middle" fontSize="32" fill="#efeee9" className="f-display" fontStyle="italic">one loop</text>
+          <text x={C} y={C + 22} textAnchor="middle" fontSize="13" fill="rgba(239,238,233,0.7)" className="f-body">more data · better model · next gap</text>
+        </svg>
+        {done && (
+          <button onClick={play} className="mx-auto mt-2 block border border-[#efeee9]/40 px-4 py-2 text-sm font-semibold transition-colors hover:border-[#efeee9]">
+            Play again
+          </button>
+        )}
+      </figure>
+      <ol aria-live="polite">
+        {LOOP.map(([t, d], i) => {
+          const on = active === i;
           return (
-            <g key={i}>
-              <circle cx={x} cy={y} r="11" fill="#0c0c0b" stroke="rgba(239,238,233,0.8)" />
-              <text x={x} y={y + 4} textAnchor="middle" fontSize="11" fill="#efeee9" className="f-display" fontStyle="italic">{i + 1}</text>
-              <text x={lx} y={ly + 4} textAnchor={anchor} fontSize="12" fill="rgba(239,238,233,0.75)" className="f-body">{LOOP[i][0]}</text>
-            </g>
+            <li key={t} aria-current={on ? "step" : undefined}
+                className={`grid grid-cols-[2.5rem_1fr] gap-x-3 border-b border-[#efeee9]/15 py-3.5 transition-all duration-500 ${active < 0 || on ? "opacity-100" : "opacity-30"} ${on ? "translate-x-2" : ""}`}>
+              <span className={`f-display text-2xl italic leading-none ${on ? "text-[#f2a33a]" : "text-[#efeee9]/60"}`}>{i + 1}</span>
+              <div>
+                <h3 className={`font-semibold transition-all duration-500 ${on ? "text-[1.6rem]" : "text-[1.25rem]"}`}>{t}</h3>
+                {/* While the loop plays only the active stage shows its text, so the whole loop fits on one screen. */}
+                <div className={`grid transition-[grid-template-rows] duration-500 ${active < 0 || on ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+                  <p className="overflow-hidden"><span className="mt-1 block max-w-[50ch] text-[1.1rem] leading-relaxed text-[#efeee9]/80">{d}</span></p>
+                </div>
+              </div>
+            </li>
           );
         })}
-        <g className="origin-center motion-safe:animate-[spin_14s_linear_infinite]" style={{ transformOrigin: `${C}px ${C}px` }}>
-          <circle cx={C} cy={C - R} r="5" fill="#f2a33a" />
-        </g>
-        <text x={C} y={C - 6} textAnchor="middle" fontSize="30" fill="#efeee9" className="f-display" fontStyle="italic">one loop</text>
-        <text x={C} y={C + 18} textAnchor="middle" fontSize="11" fill="rgba(239,238,233,0.6)" className="f-mono">more data · better model · next gap</text>
-      </svg>
-    </figure>
+      </ol>
+    </div>
   );
 }

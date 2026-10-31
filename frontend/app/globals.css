@@ -1,19 +1,22 @@
 @import "tailwindcss";
 
+/* Darkroom palette (the chronophotograph world, shared by the landing page and the workbench).
+   Token names are kept from the first design so every page follows without a rewrite:
+   navy = carbon black, indigo = graphite ink, lavender = silver hairline, teal = fixer green (approved / built). */
 :root {
-  --background: #f7f7fc;
-  --foreground: #14163a;
+  --background: #e4e3dd; /* silver-gelatin print stock, lightened for long reading */
+  --foreground: #0c0c0b;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-navy: #14163a;
-  --color-indigo: #3b3f9e;
-  --color-lavender: #c9c6f2;
-  /* teal-800: keeps white text on teal and teal text on teal/15 tints above 4.5:1 */
-  --color-teal: #115e59;
-  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --color-navy: #0c0c0b;
+  --color-indigo: #3a3935;
+  --color-lavender: #bdbcb5;
+  --color-teal: #2f5d50; /* white on it and it on its 15% tint both stay above 4.5:1 */
+  --color-safelight: #f2a33a;
+  --font-sans: var(--font-body), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 body {
@@ -25,9 +28,12 @@ body {
 }
 
 ::selection {
-  background: var(--color-lavender);
+  background: var(--color-safelight);
   color: var(--color-navy);
 }
+
+/* Workbench page titles and section heads take the display face; small UI text stays in the body face. */
+.workbench h1, .workbench .display { font-family: var(--font-display), "Didot", serif; letter-spacing: -0.01em; }
 
 ::placeholder {
   color: #63657f; /* 5.4:1 on white */
