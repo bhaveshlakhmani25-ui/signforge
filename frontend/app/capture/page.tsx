@@ -3,7 +3,7 @@
 import type { HolisticLandmarkerResult } from "@mediapipe/tasks-vision";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { api, type Consent, type Frame, type Project, type Sample, type SignClass, type Signer, when } from "@/lib/api";
+import { api, currentProject, type Consent, type Frame, type Project, type Sample, type SignClass, type Signer, when } from "@/lib/api";
 import { EXTRACTOR, extractFromVideo, loadHolistic } from "@/lib/holistic";
 import { drawSkeleton, EMPTY, smooth } from "@/lib/skeleton";
 import { card, DemoBadge, ErrorBanner } from "@/components/ui";
@@ -61,7 +61,7 @@ export default function CapturePage() {
 
   useEffect(() => {
     (async () => {
-      const [p] = await api<Project[]>("/api/projects");
+      const p = await currentProject();
       if (!p) throw new Error("No project exists yet. A teammate needs to run `python scripts/seed.py` in the backend folder.");
       const cs = await api<SignClass[]>(`/api/sign-classes?project_id=${p.id}`);
       setProject(p);

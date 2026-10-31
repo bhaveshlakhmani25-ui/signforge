@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useState } from "react";
-import { api, type Consent, type Project, type ReviewEvent, type ReviewStatus, type Sample, type SignClass, type Signer, when } from "@/lib/api";
+import { api, currentProject, type Consent, type ReviewEvent, type ReviewStatus, type Sample, type SignClass, type Signer, when } from "@/lib/api";
 import { card, DemoBadge, ErrorBanner } from "@/components/ui";
 
 const ROLES = [
@@ -20,7 +20,7 @@ const STATUS: Record<ReviewStatus, [string, string]> = {
 const Badge = ({ s }: { s: ReviewStatus }) => <span className={`rounded-md px-2 py-0.5 text-xs ${STATUS[s][1]}`}>{STATUS[s][0]}</span>;
 
 async function fetchCorpus() {
-  const [project] = await api<Project[]>("/api/projects");
+  const project = await currentProject();
   if (!project) throw new Error("No project exists yet. A teammate needs to run `python scripts/seed.py` in the backend folder.");
   const [samples, classes, signers] = await Promise.all([
     api<Sample[]>(`/api/samples?project_id=${project.id}&include_demo=true`),

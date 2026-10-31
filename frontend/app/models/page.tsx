@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { api, type ModelRun, type Project, type SignClass, when } from "@/lib/api";
+import { api, currentProject, type ModelRun, type SignClass, when } from "@/lib/api";
 import { card, DemoBadge, ErrorBanner } from "@/components/ui";
 
 const pct = (v?: number | null) => (v == null ? "Not evaluated" : `${(v * 100).toFixed(1)}%`);
 
 async function fetchModels() {
-  const [project] = await api<Project[]>("/api/projects");
+  const project = await currentProject();
   if (!project) throw new Error("No project exists yet. A teammate needs to run `python scripts/seed.py` in the backend folder.");
   const [runs, classes] = await Promise.all([
     api<ModelRun[]>(`/api/models/runs?project_id=${project.id}`),

@@ -82,3 +82,15 @@ export type ModelRun = {
              confusion_matrix?: number[][]; labels?: number[]; n_test?: number; n_train?: number; train_classes?: number[] };
 };
 
+
+// The project the viewer picked in the nav switcher (per browser; falls back to the first project).
+const PROJECT_KEY = "signforge.project";
+export function chooseProject(id: number) {
+  try { localStorage.setItem(PROJECT_KEY, String(id)); } catch { /* storage blocked: stays on the first project */ }
+}
+export async function currentProject(): Promise<Project | undefined> {
+  const projects = await api<Project[]>("/api/projects");
+  let id = 0;
+  try { id = Number(localStorage.getItem(PROJECT_KEY)); } catch { /* storage blocked */ }
+  return projects.find((p) => p.id === id) ?? projects[0];
+}

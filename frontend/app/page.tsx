@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import LandmarkReplay from "@/components/LandmarkReplay";
 import { card, DemoBadge, ErrorBanner } from "@/components/ui";
-import { api, type Consent, type ModelRun, type Project, type Sample, type SignClass } from "@/lib/api";
+import { api, currentProject, type ActiveLearningQueueItem, type ActiveLearningQueueResponse, type Consent, type ModelRun, type Project, type Sample, type SignClass } from "@/lib/api";
 
-type Data = { project: Project; classes: SignClass[]; samples: Sample[]; runs: ModelRun[]; showcase: Sample | null };
+type Data = { project: Project; classes: SignClass[]; samples: Sample[]; runs: ModelRun[]; showcase: Sample | null; next: ActiveLearningQueueItem | null };
 const pct = (v?: number | null) => (v == null ? "not evaluated" : `${(v * 100).toFixed(1)}%`);
 
 // What exists in the app today. Describes features, not data, so it's static; update it as milestones land.
@@ -28,19 +28,20 @@ function StateIcon({ state }: { state: keyof typeof ICON_PATH }) {
 }
 
 async function fetchOverview(): Promise<Data> {
-  const [project] = await api<Project[]>("/api/projects");
+  const project = await currentProject();
   if (!project) throw new Error("No project exists yet. A teammate needs to run `python scripts/seed.py` in the backend folder.");
-  const [classes, samples, runs] = await Promise.all([
+  const [classes, samples, runs, queue] = await Promise.all([
     api<SignClass[]>(`/api/sign-classes?project_id=${project.id}`),
     api<Sample[]>(`/api/samples?project_id=${project.id}&include_demo=true`),
     api<ModelRun[]>(`/api/models/runs?project_id=${project.id}`),
+    api<ActiveLearningQueueResponse>(`/api/active-learning/queue?project_id=${project.id}`),
   ]);
   // A real person's landmarks appear here only if a reviewer approved the sample AND the signer opted into public display.
   const approved = samples.filter((x) => x.source !== "demo_fixture" && x.review_status === "approved" && x.qc_passed);
   const consents = (await Promise.all([...new Set(approved.map((x) => x.signer_id))]
     .map((id) => api<Consent[]>(`/api/consents?signer_id=${id}`)))).flat();
   const publicIds = new Set(consents.filter((c) => c.status === "active" && c.allowed_uses.includes("public_release")).map((c) => c.id));
-  return { project, classes, samples, runs, showcase: approved.find((x) => publicIds.has(x.consent_id)) ?? null };
+  return { project, classes, samples, runs, showcase: approved.find((x) => publicIds.has(x.consent_id)) ?? null, next: queue.queue[0] ?? null };
 }
 
 export default function Overview() {
@@ -108,8 +109,17 @@ export default function Overview() {
           <div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
             <section aria-labelledby="next" className={`${card} border-2 border-indigo/50`}>
               <h2 id="next" className="font-semibold">Next best sample</h2>
-              <p className="mt-2 text-sm">Not available yet. The queue will rank signs by model uncertainty, coverage gap and signer-diversity gap, each shown separately.</p>
-              <p className="mt-2 text-xs text-indigo">Model uncertainty: not available (no model trained on real data).</p>
+              {data.next ? (
+                <>
+                  <p className="mt-2 text-lg font-semibold">Record {data.next.gloss}{data.next.suggested_signer === "new_signer" && " from a signer not yet represented"}</p>
+                  <p className="mt-1 max-w-[58ch] text-sm">{data.next.reason}</p>
+                  <p className="mt-2 text-xs text-indigo">Model uncertainty: {data.next.uncertainty == null ? "not available yet" : data.next.uncertainty.toFixed(2)}.</p>
+                  <div className="mt-3 flex flex-wrap gap-3 text-sm">
+                    <Link href={`/capture?sign=${data.next.sign_class_id}`} className="rounded-lg bg-teal px-3 py-2 text-white hover:opacity-90">Record this sign</Link>
+                    <Link href="/active-learning" className="px-1 py-2 text-indigo underline">See the full queue</Link>
+                  </div>
+                </>
+              ) : <p className="mt-2 text-sm">Nothing to recommend. Add signs to the project, or every sign has reached its target.</p>}
             </section>
             <section aria-labelledby="models" className={card}>
               <h2 id="models" className="font-semibold">Latest model</h2>

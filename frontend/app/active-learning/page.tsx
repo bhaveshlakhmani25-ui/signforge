@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { api, type ActiveLearningQueueResponse, type Project } from "@/lib/api";
+import { api, currentProject, type ActiveLearningQueueResponse } from "@/lib/api";
 import { card, ErrorBanner } from "@/components/ui";
 
 async function fetchQueue() {
-  const [project] = await api<Project[]>("/api/projects");
+  const project = await currentProject();
   if (!project) throw new Error("No project exists yet. A teammate needs to run `python scripts/seed.py` in the backend folder.");
   return { project, queue: await api<ActiveLearningQueueResponse>(`/api/active-learning/queue?project_id=${project.id}`) };
 }
