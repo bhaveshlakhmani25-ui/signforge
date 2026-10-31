@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "test -f public/models/holistic_landmarker.task || npm run setup:models",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

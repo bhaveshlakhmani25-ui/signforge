@@ -23,6 +23,21 @@ npm run dev   # http://localhost:3000
 Schema changes are not migrated: after pulling a model change, move `backend/signforge.db` and `data/processed/` aside and re-run `seed.py`.
 shortcut: no Alembic migrations yet; add them before real (non-demo) collection starts.
 
+## Deploying
+
+Two services: the FastAPI backend and the Next.js frontend.
+
+- **Backend:** `cd backend && pip install -r requirements.txt && uvicorn app.main:app --host 0.0.0.0 --port $PORT`.
+  Set `CORS_ORIGINS` to the frontend's public URL (comma-separated for several). `DATABASE_URL` defaults to a SQLite file and
+  `SIGNFORGE_DATA_DIR` to `data/processed`; both need a persistent disk, or the corpus is lost on restart. There are no
+  database migrations: new columns are added at startup.
+- **Frontend:** set `NEXT_PUBLIC_API_URL` to the backend's public URL **before** `npm run build` (it is baked into the build),
+  then `npm run build && npm start`. The build downloads the MediaPipe model (13.7 MB) on first run via `prebuild`.
+- **HTTPS is required.** Browsers only allow the camera on `https://` pages or `localhost`, so Capture and Interpret
+  will not start on a plain `http://` host.
+- Trained model weights and imported datasets live under `SIGNFORGE_DATA_DIR` and are not in git: a fresh deploy starts with an
+  empty corpus and no trained model until data is imported and a model is trained.
+
 Tests: `cd backend && .venv/bin/pytest` · `cd frontend && npm run typecheck && npm run lint && npm run build`
 
 ## Landmark contract
