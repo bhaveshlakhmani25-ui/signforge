@@ -32,3 +32,9 @@ def train_baseline(X: np.ndarray, y: np.ndarray, n_classes: int, cfg: dict, seed
 def predict_proba(model: nn.Module, X: np.ndarray) -> np.ndarray:
     model.eval()
     return torch.softmax(model(torch.from_numpy(X)), dim=-1).numpy()
+
+
+@torch.no_grad()
+def predict_logits(model: nn.Module, X: np.ndarray) -> np.ndarray:
+    model.eval()
+    return model(torch.from_numpy(X)).numpy()

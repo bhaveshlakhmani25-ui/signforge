@@ -74,12 +74,19 @@ export const when = (iso: string) => new Date(/Z|[+-]\d\d:\d\d$/.test(iso) ? iso
 
 export type ClassMetrics = { precision: number; recall: number; f1: number; support: number };
 export type ModelRun = {
-  id: number; model_kind: "baseline" | "transfer"; pool: "real" | "demo"; status: "running" | "succeeded" | "failed";
+  id: number; model_kind: "baseline" | "transfer"; pool: "real" | "demo" | "external"; status: "running" | "succeeded" | "failed";
   failure_detail: string; checkpoint_reference: string; feature_schema_version: string; preprocessing: Record<string, string | number>;
   data_version: string; split_strategy: string; train_sample_ids: number[]; test_sample_ids: number[]; seed: number;
   config: Record<string, string | number>; duration_s: number; created_at: string;
   metrics: { accuracy?: number | null; macro_f1?: number | null; macro_f1_over?: string; per_class?: Record<string, ClassMetrics>;
-             confusion_matrix?: number[][]; labels?: number[]; n_test?: number; n_train?: number; train_classes?: number[] };
+             confusion_matrix?: number[][]; labels?: number[]; n_test?: number; n_train?: number; train_classes?: number[];
+             calibration?: Calibration | null };
+};
+export type ReliabilityBin = { lo: number; hi: number; n: number; mean_confidence: number | null; accuracy: number | null };
+export type Reliability = { ece: number; n: number; bins: ReliabilityBin[] };
+export type Calibration = {
+  method: string; temperature: number; n_val: number; val_after: Reliability; test_before: Reliability; test_after: Reliability;
+  test_nll_before: number; test_nll_after: number; max_ece: number; reliability_passed: boolean;
 };
 
 
