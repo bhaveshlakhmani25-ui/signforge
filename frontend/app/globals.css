@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f7f7fc;
+  --foreground: #14163a;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-navy: #14163a;
+  --color-indigo: #3b3f9e;
+  --color-lavender: #c9c6f2;
+  /* teal-800: keeps white text on teal and teal text on teal/15 tints above 4.5:1 */
+  --color-teal: #115e59;
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  accent-color: var(--color-indigo);
+  caret-color: var(--color-indigo);
+}
+
+::selection {
+  background: var(--color-lavender);
+  color: var(--color-navy);
+}
+
+::placeholder {
+  color: #63657f; /* 5.4:1 on white */
+}
+
+table,
+dd {
+  font-variant-numeric: tabular-nums;
+}
+
+input[type="checkbox"] {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex-shrink: 0;
+}
+
+/* Touch screens: every control in the workbench gets a 44px target. */
+@media (pointer: coarse) {
+  main button,
+  main select,
+  main input:not([type="checkbox"]):not([type="file"]),
+  main label:has(> input) {
+    min-height: 44px;
+  }
+  main label:has(> input[type="checkbox"]) {
+    align-items: center;
+  }
+}
+
+p,
+li,
+figcaption {
+  text-wrap: pretty;
+}

@@ -1,0 +1,32 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+const LIVE = [["/", "Overview"], ["/capture", "Capture"], ["/corpus", "Corpus & review"], ["/models", "Models & evaluation"]] as const;
+// Shown so the roadmap is visible, but disabled: these pages are not built yet.
+const PLANNED = ["Active learning", "Export", "Project settings"];
+
+export default function Nav() {
+  const path = usePathname();
+  return (
+    <nav aria-label="Main" className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">
+      {LIVE.map(([href, label]) => {
+        const active = href === "/" ? path === "/" : path.startsWith(href);
+        return (
+          <Link key={href} href={href} aria-current={active ? "page" : undefined}
+                className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm ${active ? "bg-indigo text-white" : "text-lavender hover:bg-white/10 hover:text-white"}`}>
+            {label}
+          </Link>
+        );
+      })}
+      <p className="hidden px-3 pt-4 pb-1 text-xs uppercase tracking-wider text-lavender/60 md:block">Planned</p>
+      {PLANNED.map((label) => (
+        <span key={label} title="Not built yet"
+              className="hidden whitespace-nowrap rounded-lg px-3 py-2 text-sm text-lavender/60 md:block">
+          {label}<span className="sr-only"> (planned, not built yet)</span>
+        </span>
+      ))}
+    </nav>
+  );
+}
