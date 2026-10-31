@@ -4,7 +4,7 @@ import type { HolisticLandmarkerResult } from "@mediapipe/tasks-vision";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { api, currentProject, type Consent, type Frame, type Project, type Sample, type SignClass, type Signer, when } from "@/lib/api";
-import { EXTRACTOR, extractFromVideo, loadHolistic } from "@/lib/holistic";
+import { EXTRACTOR, extractFromVideo, loadHolistic, trackVideo } from "@/lib/holistic";
 import { drawSkeleton, EMPTY, smooth } from "@/lib/skeleton";
 import { card, DemoBadge, ErrorBanner } from "@/components/ui";
 
@@ -51,6 +51,9 @@ export default function CapturePage() {
   const [consenting, setConsenting] = useState(false);
   const [recommended, setRecommended] = useState(false); // opened from the Active learning page with ?sign=
   const [handsLow, setHandsLow] = useState(false);
+  const [hands, setHands] = useState({ left: false, right: false }); // live: is each hand tracked right now
+  const previewing = useRef(false);
+  const handSeen = useRef({ left: 0, right: 0, at: 0 });
   const video = useRef<HTMLVideoElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const stream = useRef<MediaStream | null>(null);
@@ -102,6 +105,11 @@ export default function CapturePage() {
     const wrists = [r.poseLandmarks[0]?.[15], r.poseLandmarks[0]?.[16]];
     lowFrames.current = wrists.some((w) => w && w.y > LOW_HAND_Y) ? lowFrames.current + 1 : 0;
     setHandsLow(lowFrames.current >= LOW_HAND_FRAMES);
+    // A hand counts as tracked if it was seen in the last few frames; the state updates a few times a second, not every frame.
+    const h = handSeen.current, now = performance.now();
+    h.left = r.leftHandLandmarks[0] ? now : h.left;
+    h.right = r.rightHandLandmarks[0] ? now : h.right;
+    if (now - h.at > 200) { h.at = now; setHands({ left: now - h.left < 400, right: now - h.right < 400 }); }
     if (!overlayRef.current) return;
     smoothed.current = smooth(smoothed.current, { pose: r.poseLandmarks[0] ?? null, left: r.leftHandLandmarks[0] ?? null, right: r.rightHandLandmarks[0] ?? null });
     drawSkeleton(ctx, c.width, c.height, smoothed.current);
@@ -118,16 +126,25 @@ export default function CapturePage() {
     try {
       setStatus("Loading landmark model…");
       await loadHolistic();
-      stream.current = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 }, audio: false });
+      // 30 fps where the camera allows it: the hand tracker follows motion frame to frame, so fewer frames lose fast hands.
+      stream.current = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720, frameRate: { ideal: 30 }, facingMode: "user" }, audio: false });
       const v = video.current!;
       v.srcObject = stream.current;
       await v.play();
       setCameraOn(true);
-      setStatus("Camera on. Video is processed in this browser and never uploaded.");
+      startPreview();
+      setStatus("Camera on. Check that both hand markers say tracked, then record. Video is processed in this browser and never uploaded.");
     } catch (e) { fail(e); }
   }
 
+  function startPreview() {
+    if (previewing.current || !video.current) return;
+    previewing.current = true;
+    trackVideo(video.current, () => !previewing.current, draw).catch(fail);
+  }
+
   function stopCamera() {
+    previewing.current = false;
     stream.current?.getTracks().forEach((t) => t.stop());
     stream.current = null;
     if (video.current) video.current.srcObject = null;
@@ -140,10 +157,12 @@ export default function CapturePage() {
     smoothed.current = EMPTY;
     lowFrames.current = 0;
     v.scrollIntoView({ block: "nearest" }); // an off-screen <video> may never paint, and then no frames reach the extractor
+    previewing.current = false; // one tracker at a time: the recording takes over from the preview
     setRecording(true);
     const frames = await extractFromVideo(v, (t) => t >= maxSeconds || stopRef.current !== null, draw);
     setRecording(false);
     setHandsLow(false);
+    if (v.srcObject) startPreview(); // back to live feedback for the next take
     return stopRef.current === "cancel" ? null : frames;
   }
 
@@ -155,8 +174,8 @@ export default function CapturePage() {
       setStatus(`Recording: sign “${sign?.gloss}” now. Recording stops by itself after ${MAX_RECORD_SECONDS} s.`);
       const frames = await extract(v, MAX_RECORD_SECONDS);
       if (!frames) { setBusy(false); setStatus("Cancelled. Nothing was saved."); return; }
-      const { sha256 } = await loadHolistic();
-      await submit({ signClassId: classId!, frames, source: "captured", extractor: EXTRACTOR, sha: sha256, width: v.videoWidth, height: v.videoHeight });
+      const { sha256, delegate } = await loadHolistic();
+      await submit({ signClassId: classId!, frames, source: "captured", extractor: `${EXTRACTOR} ${delegate}`, sha: sha256, width: v.videoWidth, height: v.videoHeight });
     } catch (e) { fail(e); }
   }
 
@@ -167,7 +186,7 @@ export default function CapturePage() {
     try {
       if (cameraOn) stopCamera();
       setStatus("Loading landmark model…");
-      const { sha256 } = await loadHolistic();
+      const { sha256, delegate } = await loadHolistic();
       v.src = url;
       await v.play();
       setStatus(`Extracting landmarks from the clip (only the first ${MAX_UPLOAD_SECONDS}s are used)…`);
@@ -176,7 +195,7 @@ export default function CapturePage() {
       v.pause();
       v.removeAttribute("src");
       if (!frames) { setBusy(false); setStatus("Cancelled. Nothing was saved."); return; }
-      await submit({ signClassId: classId!, frames, source: "captured", extractor: EXTRACTOR, sha: sha256, width, height });
+      await submit({ signClassId: classId!, frames, source: "captured", extractor: `${EXTRACTOR} ${delegate}`, sha: sha256, width, height });
     } catch (e) { fail(e); } finally { URL.revokeObjectURL(url); }
   }
 
@@ -273,6 +292,16 @@ export default function CapturePage() {
           <video ref={video} playsInline muted className={`absolute inset-0 h-full w-full object-contain ${cameraOn ? "-scale-x-100" : ""}`} />
           <canvas ref={canvas} aria-hidden className={`absolute inset-0 h-full w-full object-contain ${cameraOn ? "-scale-x-100" : ""}`} />
           {cameraOn && <div aria-hidden className="pointer-events-none absolute inset-x-[3%] top-[4%] bottom-[14%] rounded-lg border-2 border-dashed border-lavender/70" />}
+          {cameraOn && (
+            <div role="status" aria-live="polite" className="absolute left-3 top-3 flex gap-2 text-sm font-medium">
+              {(["left", "right"] as const).map((side) => (
+                <span key={side} className={`flex items-center gap-1.5 px-2.5 py-1 ${hands[side] ? "bg-teal text-white" : "bg-amber-100 text-amber-950"}`}>
+                  <span aria-hidden className={`size-2 rounded-full ${hands[side] ? "bg-white" : "bg-amber-700"}`} />
+                  Your {side} hand: {hands[side] ? "tracked" : "not seen"}
+                </span>
+              ))}
+            </div>
+          )}
           {handsLow && cameraOn && <p role="status" className="absolute inset-x-0 bottom-0 bg-amber-100 p-2 text-center text-sm font-medium text-amber-950">A hand is at the bottom of the frame. Raise your hands so they stay inside the dashed box.</p>}
           {!cameraOn && !busy && <p className="absolute inset-0 grid place-items-center p-4 text-center text-sm text-lavender">Camera is off</p>}
         </div>

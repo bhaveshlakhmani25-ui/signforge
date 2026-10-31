@@ -4,7 +4,7 @@ import type { Frame } from "./api";
 export const EXTRACTOR = "@mediapipe/tasks-vision@1.1.0 HolisticLandmarker (float16)";
 const MODEL_URL = "/models/holistic_landmarker.task"; // fetched by `npm run setup:models`
 
-let loaded: Promise<{ landmarker: HolisticLandmarker; sha256: string }> | null = null;
+let loaded: Promise<{ landmarker: HolisticLandmarker; sha256: string; delegate: "GPU" | "CPU" }> | null = null;
 // The landmarker is shared by every recording, and MediaPipe rejects a timestamp <= the last one it saw.
 // Uploaded clips restart at 0 s, so the counter must outlive a single recording.
 let lastMs = -1;
@@ -16,11 +16,20 @@ export function loadHolistic() {
     const digest = await crypto.subtle.digest("SHA-256", buf);
     const sha256 = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
     const vision = await FilesetResolver.forVisionTasks("/models");
-    const landmarker = await HolisticLandmarker.createFromOptions(vision, {
-      baseOptions: { modelAssetBuffer: buf },
-      runningMode: "VIDEO",
-    });
-    return { landmarker, sha256 };
+    // GPU runs the model several times faster than CPU, so more frames reach the tracker and fast hand movement
+    // is not lost between frames. Confidence thresholds stay at MediaPipe's defaults, the same as the INCLUDE import.
+    for (const delegate of ["GPU", "CPU"] as const) {
+      try {
+        const landmarker = await HolisticLandmarker.createFromOptions(vision, {
+          baseOptions: { modelAssetBuffer: buf, delegate },
+          runningMode: "VIDEO",
+        });
+        return { landmarker, sha256, delegate };
+      } catch (e) {
+        if (delegate === "CPU") throw e; // no WebGL: fall back to CPU, and only fail if that fails too
+      }
+    }
+    throw new Error("unreachable");
   })();
   loaded.catch(() => (loaded = null)); // allow retry after a failed load
   return loaded;
@@ -74,4 +83,18 @@ export async function extractFromVideo(video: HTMLVideoElement, shouldStop: (t: 
     };
     video.requestVideoFrameCallback(step);
   });
+}
+
+/** Tracks a live <video> for the preview (no frames kept) until `shouldStop()` returns true. */
+export async function trackVideo(video: HTMLVideoElement, shouldStop: () => boolean, onResult: (r: HolisticLandmarkerResult) => void) {
+  const { landmarker } = await loadHolistic();
+  // Same clock as extractFromVideo (the video's own media time), so recording continues the preview's timeline smoothly.
+  const step = (_now: number, meta: VideoFrameCallbackMetadata) => {
+    if (shouldStop() || !video.srcObject) return;
+    const ms = Math.max(lastMs + 1, Math.round(meta.mediaTime * 1000));
+    lastMs = ms;
+    onResult(landmarker.detectForVideo(video, ms));
+    video.requestVideoFrameCallback(step);
+  };
+  video.requestVideoFrameCallback(step);
 }
