@@ -47,6 +47,7 @@ def interpret(session: Session, frames: list[dict], project_id: int | None = Non
     probs = softmax(logits[:, learned], m["calibration"]["temperature"])[0]
     order = np.argsort(probs)[::-1]
     top3 = [{"sign": vocab[j], "p": round(float(probs[j]), 4)} for j in order[:3]]
+    base["probs"] = {vocab[j]: round(float(probs[j]), 4) for j in range(len(vocab))}  # the Learn page scores one target sign
     best = top3[0]
     if best["p"] < TH.INTERPRET_MIN_CONF:
         return {**base, "state": "unsure", "top3": top3,

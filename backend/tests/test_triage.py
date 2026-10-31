@@ -154,3 +154,14 @@ def test_interpret_test_clip_reads_a_held_out_clip(env):
     assert r["sample_id"] in run["test_sample_ids"] and r["true_sign"] in ("A", "B")
     assert r["reading"]["run_id"] == env["run_id"] and r["reading"]["state"] in ("sign", "unsure")
     assert client.post("/api/interpret/test-clip", params={"project_id": 999999}).status_code == 404
+
+
+def test_learn_signs_lists_known_signs_with_examples(env):
+    client = env["client"]
+    r = client.get("/api/learn/signs", params={"project_id": env["p"]}).json()
+    assert r["run_id"] == env["run_id"] and [s["gloss"] for s in r["signs"]] == ["A", "B"]  # UNSEEN was never trained
+    assert all(1 <= len(s["examples"]) <= 3 for s in r["signs"])
+    d = client.get("/api/demo-frames", params={"class_index": 0, "seed": 970}).json()
+    probs = client.post("/api/interpret", json={"frames": d["frames"], "project_id": env["p"]}).json()["probs"]
+    assert set(probs) == {"A", "B"} and abs(sum(probs.values()) - 1) < 0.01
+    assert client.get("/api/learn/signs", params={"project_id": 999999}).status_code == 404
