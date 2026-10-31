@@ -33,6 +33,11 @@ Two services: the FastAPI backend and the Next.js frontend.
   database migrations: new columns are added at startup.
 - **Frontend:** set `NEXT_PUBLIC_API_URL` to the backend's public URL **before** `npm run build` (it is baked into the build),
   then `npm run build && npm start`. The build downloads the MediaPipe model (13.7 MB) on first run via `prebuild`.
+- **Hosted backend (Hugging Face Space):** `python3 deploy/hf-space/build_space.py` assembles `deploy/space/` (git-ignored):
+  the backend plus a public-safe copy of the data (external datasets and DEMO DATA only; team-recorded clips, their
+  signers, consents and review records are left out). Upload it with `hf upload <user>/signforge-api deploy/space . --repo-type space`,
+  then set the repository variable `API_URL` to `https://<user>-signforge-api.hf.space` and re-run the Pages workflow.
+  The Space has no login and its disk resets on restart.
 - **HTTPS is required.** Browsers only allow the camera on `https://` pages or `localhost`, so Capture and Interpret
   will not start on a plain `http://` host.
 - Trained model weights and imported datasets live under `SIGNFORGE_DATA_DIR` and are not in git: a fresh deploy starts with an

@@ -29,3 +29,6 @@ data/raw/
 
 # Test runs write fixtures here (tests use relative data/ paths)
 backend/data/
+
+# generated Hugging Face Space bundle (contains data)
+deploy/space/
