@@ -1,8 +1,9 @@
+import os
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 
 from app.db import get_session
-from app.db.models import ConsentRecord, Project, SignClass, Signer
+from app.db.models import ConsentRecord, Project, Sample, SignClass, Signer
 from app.schemas import ConsentIn, ProjectIn, SignClassIn, SignerIn
 
 router = APIRouter(prefix="/api")
@@ -64,3 +65,39 @@ def list_consents(signer_id: int, session: Session = Depends(get_session)):
 def create_consent(body: ConsentIn, session: Session = Depends(get_session)):
     get_or_404(session, Signer, body.signer_id)
     return save(session, ConsentRecord(**body.model_dump(exclude={"confirmed"}), raw_video_retained=False))
+
+
+@router.post("/consents/{consent_id}/withdraw")
+def withdraw_consent(consent_id: int, delete_samples: bool = False, session: Session = Depends(get_session)):
+    """
+    Withdraws consent. Marks status as 'withdrawn'. Disqualifies associated samples from training/export.
+    Optionally deletes features and sample records if delete_samples=True.
+    """
+    consent = get_or_404(session, ConsentRecord, consent_id)
+    consent.status = "withdrawn"
+    session.add(consent)
+
+    affected = session.exec(select(Sample).where(Sample.consent_id == consent_id)).all()
+    deleted_count = 0
+    for s in affected:
+        if delete_samples:
+            if s.feature_path and os.path.exists(s.feature_path):
+                try:
+                    os.remove(s.feature_path)
+                except OSError:
+                    pass
+            session.delete(s)
+            deleted_count += 1
+        else:
+            s.review_status = "rejected"
+            s.provenance_note = ((s.provenance_note or "") + " [CONSENT WITHDRAWN]").strip()
+            session.add(s)
+
+    session.commit()
+    return {
+        "status": "withdrawn",
+        "consent_id": consent_id,
+        "samples_affected": len(affected),
+        "samples_deleted": deleted_count,
+    }
+

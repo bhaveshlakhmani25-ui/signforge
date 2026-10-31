@@ -60,13 +60,20 @@ class CaptureIn(BaseModel):
     sign_class_id: int
     signer_id: int
     consent_id: int
-    source: Literal["captured", "demo_fixture"]
+    source: Literal["captured", "demo_fixture", "external_dataset", "public_dataset"] = "captured"
     extractor: str = Field(min_length=1, max_length=100)
     extractor_model_sha: str = ""
     fps: Num = Field(gt=0, le=120)
     width: int = Field(gt=0)
     height: int = Field(gt=0)
     mirrored: Literal[False] = False  # D4: stored coordinates must be un-mirrored
+    dataset_name: str = ""
+    dataset_version: str = ""
+    dataset_license: str = ""
+    citation: str = ""
+    external_sample_id: str = ""
+    external_signer_id: str = ""
+    external_split: str = ""
     frames: list[Frame] = Field(max_length=1200)
 
     @model_validator(mode="after")
