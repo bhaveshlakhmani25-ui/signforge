@@ -2,6 +2,7 @@
 // browser (IndexedDB) and never sent anywhere. The automated check is a port of backend/app/services/quality_checks.py
 // and the model check a port of triage.predict(), both checked by deploy/pages/check_local_interpret.ts.
 
+import type { TrainedHead } from "./headTraining.ts";
 import { at, learnedSigns, roundEven, referenceModel, resample, scoreFrames, type Bundle, type InFrame } from "./localInterpret.ts"; // explicit extension: deploy/pages/check_local_interpret.ts runs this file in Node
 
 export type LocalBundle = Bundle & {
@@ -239,4 +240,33 @@ export async function localRequest(path: string, method: string, body: unknown, 
 export async function exportLocal() {
   return { exported_at: now(), note: "SIGNFORGE public demo: recorded in this browser, landmarks only. Never uploaded anywhere.",
            signers: await all("signers"), consents: await all("consents"), samples: await all("samples"), reviews: await all("reviews") };
+}
+
+/** The backend's eligible_samples() for this browser's clips: passed the automated check, approved by a person,
+ *  and recorded under an active consent that allows model training. Counts explain any shortfall. */
+export async function trainingClips(projectId: number) {
+  const consents = new Map((await all("consents")).map((c) => [c.id, c]));
+  const mine = (await all("samples")).filter((s) => s.project_id === projectId && s.source === "captured");
+  const passed = mine.filter((s) => s.qc_passed), approved = passed.filter((s) => s.review_status === "approved");
+  const eligible = approved.filter((s) => {
+    const c = consents.get(s.consent_id as number);
+    return c?.status === "active" && (c.allowed_uses as string[]).includes("model_training");
+  });
+  return { counts: { recorded: mine.length, passed: passed.length, approved: approved.length, eligible: eligible.length },
+           clips: eligible.map((s) => ({ id: s.id, sign_class_id: s.sign_class_id as number, frames: s.frames as InFrame[] })) };
+}
+
+// A retrained output layer, kept per project on this device. It is dropped as soon as any clip it learned from is
+// deleted, rejected, or loses its training consent, matching what withdrawal means everywhere else.
+const HEAD_KEY = (projectId: number) => `signforge.head.${projectId}`;
+export function saveHead(head: TrainedHead) { localStorage.setItem(HEAD_KEY(head.project_id), JSON.stringify(head)); }
+export function clearHead(projectId: number) { try { localStorage.removeItem(HEAD_KEY(projectId)); } catch { /* storage blocked */ } }
+export async function activeHead(projectId: number): Promise<{ head: TrainedHead | null; dropped: boolean }> {
+  let head: TrainedHead | null = null;
+  try { head = JSON.parse(localStorage.getItem(HEAD_KEY(projectId)) ?? "null"); } catch { return { head: null, dropped: false } }
+  if (!head) return { head: null, dropped: false };
+  const ok = new Set((await trainingClips(projectId)).clips.map((c) => c.id));
+  if (head.user_sample_ids.every((id) => ok.has(id))) return { head, dropped: false };
+  clearHead(projectId);
+  return { head: null, dropped: true };
 }

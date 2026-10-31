@@ -3,6 +3,7 @@
 import { readFileSync } from "node:fs";
 import { interpretLocally, type Bundle } from "../../frontend/lib/localInterpret.ts";
 import { runQc, type LocalBundle } from "../../frontend/lib/localCorpus.ts";
+import { trainHead } from "../../frontend/lib/headTraining.ts";
 
 const bundle: Bundle = JSON.parse(readFileSync(new URL("../../frontend/public/snapshot/interpret_models.json", import.meta.url), "utf8"));
 const { interpret: golden, qc: qcGolden } = JSON.parse(readFileSync(new URL("golden.json", import.meta.url), "utf8"));
@@ -23,4 +24,17 @@ for (const g of qcGolden) {
   if (!same) { qcBad++; console.log("QC MISMATCH\n got", JSON.stringify(got), "\n exp", JSON.stringify(exp)); }
 }
 console.log(`automated check: ${qcGolden.length - qcBad}/${qcGolden.length} match the backend (flags, messages, metrics)`);
-process.exit(bad || qcBad ? 1 : 0);
+// Output-layer retraining: the shipped layer on the exported features must reproduce the run's own test results,
+// and retraining on dataset clips alone must land close to them (no user clips, so any big change is a trainer bug).
+const runs: Record<string, { accuracy: number; ece: number }> = JSON.parse(readFileSync(new URL("run_metrics.json", import.meta.url), "utf8"));
+let trainBad = 0;
+for (const [pid, m] of Object.entries(bundle.models)) {
+  const feats = JSON.parse(readFileSync(new URL(`../../frontend/public/snapshot/interpret_features_${pid}.json`, import.meta.url), "utf8"));
+  const t = trainHead(bundle as never, m, Number(pid), feats, []), want = runs[String(m.run_id)];
+  const sameBefore = Math.abs(t.before.accuracy! - want.accuracy) < 1e-3 && Math.abs(t.before.ece - want.ece) < 2e-3;
+  if (!sameBefore || Math.abs(t.after.accuracy! - want.accuracy) > 0.1) trainBad++;
+  console.log(`retrain project ${pid} (run #${m.run_id}): shipped ${pct(t.before.accuracy)} ECE ${t.before.ece.toFixed(3)} (run says ${pct(want.accuracy)} ECE ${want.ece})`
+    + ` -> retrained on dataset only ${pct(t.after.accuracy)} ECE ${t.after.ece.toFixed(3)}, macro-F1 ${t.before.macro_f1?.toFixed(3)} -> ${t.after.macro_f1?.toFixed(3)}`);
+}
+function pct(v: number | null) { return v == null ? "-" : `${(v * 100).toFixed(1)}%`; }
+process.exit(bad || qcBad || trainBad ? 1 : 0);

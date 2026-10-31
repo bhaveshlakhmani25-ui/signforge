@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { api, currentProject, type Calibration, type ModelRun, type SignClass, when } from "@/lib/api";
+import { api, currentProject, loadModelBundle, readSnapshot, SNAPSHOT, type Calibration, type ModelRun, type SignClass, when } from "@/lib/api";
+import type { Features, TrainedHead } from "@/lib/headTraining";
 import { card, DemoBadge, ErrorBanner } from "@/components/ui";
 
 const pct = (v?: number | null) => (v == null ? "Not evaluated" : `${(v * 100).toFixed(1)}%`);
@@ -73,22 +74,23 @@ export default function ModelsPage() {
         </p>
       </header>
       {error && <ErrorBanner message={`Could not load the models. ${error}`} onRetry={() => { setError(""); reload(); }} />}
+      {SNAPSHOT && data && <BrowserRetrain projectId={data.project.id} />}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <section aria-labelledby="baseline" className={card}>
           <h2 id="baseline" className="font-semibold">Baseline (from scratch)</h2>
           <p className="mt-1 text-sm">Small GRU over 27 body/hand points, randomly initialised: <strong>not pretrained</strong>. Trains on real samples that passed the automated check, were approved in human review, and come from signers who allowed model training. The first run fixes the test set; later runs reuse it, so results stay comparable.</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <button className="rounded-lg bg-indigo px-3 py-2 text-sm text-white disabled:opacity-60" disabled={!data || !!training} onClick={() => train("real")}>
+            <button className="rounded-lg bg-indigo px-3 py-2 text-sm text-white disabled:opacity-60" disabled={!data || !!training || SNAPSHOT} title={SNAPSHOT ? "Full training needs the backend; retrain the output layer below instead" : undefined} onClick={() => train("real")}>
               {training === "real" ? "Training…" : "Train on approved real samples"}
             </button>
-            <button className="rounded-lg border border-amber-600 px-3 py-2 text-sm text-amber-900 disabled:opacity-60" disabled={!data || !!training} onClick={() => train("demo")}>
+            <button className="rounded-lg border border-amber-600 px-3 py-2 text-sm text-amber-900 disabled:opacity-60" disabled={!data || !!training || SNAPSHOT} title={SNAPSHOT ? "Full training needs the backend; retrain the output layer below instead" : undefined} onClick={() => train("demo")}>
               {training === "demo" ? "Training…" : "Train on DEMO DATA"}
             </button>
-            <button className="rounded-lg border border-indigo px-3 py-2 text-sm text-indigo disabled:opacity-60" disabled={!data || !!training} onClick={() => train("external")}>
+            <button className="rounded-lg border border-indigo px-3 py-2 text-sm text-indigo disabled:opacity-60" disabled={!data || !!training || SNAPSHOT} title={SNAPSHOT ? "Full training needs the backend; retrain the output layer below instead" : undefined} onClick={() => train("external")}>
               {training === "external" ? "Training…" : "Train on external dataset"}
             </button>
-            <button className="rounded-lg border border-indigo px-3 py-2 text-sm text-indigo disabled:opacity-60" disabled={!data || !!training} onClick={() => train("combined")}>
+            <button className="rounded-lg border border-indigo px-3 py-2 text-sm text-indigo disabled:opacity-60" disabled={!data || !!training || SNAPSHOT} title={SNAPSHOT ? "Full training needs the backend; retrain the output layer below instead" : undefined} onClick={() => train("combined")}>
               {training === "combined" ? "Training…" : "Train on dataset + our approved clips"}
             </button>
           </div>
@@ -161,5 +163,88 @@ export default function ModelsPage() {
         ))}
       </section>
     </div>
+  );
+}
+
+const pc = (v: number | null) => (v == null ? "—" : `${(v * 100).toFixed(1)}%`);
+
+async function retrainState(projectId: number) {
+  const [{ trainingClips, activeHead }, bundle] = await Promise.all([import("@/lib/localCorpus"), loadModelBundle()]);
+  const [{ counts }, { head, dropped }] = await Promise.all([trainingClips(projectId), activeHead(projectId)]);
+  return { counts, head, dropped, hasModel: String(projectId) in bundle.models };
+}
+
+/** Public demo: retrain the interpreter's output layer in this browser on the dataset plus this visitor's approved clips. */
+function BrowserRetrain({ projectId }: { projectId: number }) {
+  const [state, setState] = useState<Awaited<ReturnType<typeof retrainState>> | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState<TrainedHead | null>(null);
+
+  const load = useCallback(() => retrainState(projectId).then(setState, (e) => setError(e instanceof Error ? e.message : String(e))), [projectId]);
+  useEffect(() => { load(); }, [load]);
+
+  async function retrain() {
+    setBusy(true); setError("");
+    try {
+      const [{ trainingClips }, { trainHead }, bundle, feats] = await Promise.all([
+        import("@/lib/localCorpus"), import("@/lib/headTraining"), loadModelBundle(), readSnapshot<Features>(`/interpret/features/${projectId}`)]);
+      await new Promise((r) => setTimeout(r)); // let "Training…" paint before the CPU-bound loop
+      const head = trainHead(bundle, bundle.models[String(projectId)], projectId, feats, (await trainingClips(projectId)).clips);
+      setResult(head);
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    setBusy(false);
+  }
+  async function use(head: TrainedHead | null) {
+    const { saveHead, clearHead } = await import("@/lib/localCorpus");
+    try { if (head) saveHead(head); else clearHead(projectId); } catch (e) { setError(`Not saved in this browser: ${e instanceof Error ? e.message : e}`); }
+    setResult(null); await load();
+  }
+
+  if (!state) return error ? <ErrorBanner message={error} /> : null;
+  const c = state.counts, shown = result ?? state.head;
+  return (
+    <section aria-labelledby="retrain" className={card}>
+      <h2 id="retrain" className="font-semibold">Retrain the output layer in this browser</h2>
+      <p className="mt-1 max-w-[75ch] text-sm">
+        Interpret uses this project&apos;s reference model. Here only its final layer is retrained, on that run&apos;s frozen features of the dataset
+        clips plus your approved clips from this browser. The GRU itself does not change and was trained from scratch, so this is <strong>not transfer learning</strong>.
+        Each of your clips counts 5 times, because each sign has only about 14 dataset clips. Nothing leaves this browser.
+      </p>
+      {!state.hasModel
+        ? <p className="mt-3 text-sm text-amber-900">This project has no trained model, so there is no output layer to retrain. Switch to a dataset project in the sidebar.</p>
+        : (
+          <>
+            <p className="mt-3 text-sm">
+              Your clips in this project: {c.recorded} recorded · {c.passed} passed the automated check · {c.approved} approved · <strong>{c.eligible} usable for training</strong>.
+              {c.eligible === 0 && " A clip is usable once it passes the automated check, you approve it in Corpus & review, and its consent allows model training (an optional box when you record consent)."}
+            </p>
+            {state.dropped && <p className="mt-2 text-sm text-amber-900">Your earlier retrained layer was removed: a clip it learned from was deleted, rejected or lost its training consent.</p>}
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button className="rounded-lg bg-indigo px-3 py-2 text-sm text-white disabled:opacity-60" disabled={busy} onClick={retrain}>
+                {busy ? "Training…" : c.eligible ? `Retrain with ${c.eligible} of your clips` : "Retrain on the dataset only"}</button>
+              {result && <button className="rounded-lg border border-teal px-3 py-2 text-sm text-teal" onClick={() => use(result)}>Use it in Interpret</button>}
+              {!result && state.head && <button className="rounded-lg border border-indigo px-3 py-2 text-sm text-indigo" onClick={() => use(null)}>Revert to run #{state.head.base_run_id}</button>}
+            </div>
+            {error && <ErrorBanner message={error} />}
+            {shown && (
+              <div className="mt-4 overflow-x-auto">
+                <p className="text-sm font-medium">{result ? "New retrained layer (not in use yet)" : "In use in Interpret on this device"} · trained {when(shown.created_at)} on {shown.n_dataset_clips} dataset clips
+                  {" "}+ {shown.user_sample_ids.length} of your clips (weight {shown.user_weight})</p>
+                <table className="mt-2 text-sm">
+                  <thead><tr className="text-left text-indigo"><th className="pr-6 font-normal">Same {shown.after.n_test} frozen test clips</th><th className="pr-6 font-normal">Accuracy</th><th className="pr-6 font-normal">Macro-F1</th><th className="font-normal">Calibration (ECE)</th></tr></thead>
+                  <tbody>
+                    {([["Shipped layer (run #" + shown.base_run_id + ")", shown.before], ["Retrained here", shown.after]] as const).map(([label, m]) => (
+                      <tr key={label}><td className="pr-6">{label}</td><td className="pr-6">{pc(m.accuracy)}</td><td className="pr-6">{m.macro_f1 == null ? "—" : m.macro_f1.toFixed(3)}</td>
+                        <td>{m.ece.toFixed(3)} {m.reliability_passed ? "(passed)" : "(failed: confidence is approximate)"}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="mt-2 text-xs text-indigo">The test clips are dataset clips the model never trained on. Your own clips have no held-out test clips, so how much they help your signing is <strong>not measured</strong>.</p>
+              </div>
+            )}
+          </>
+        )}
+    </section>
   );
 }

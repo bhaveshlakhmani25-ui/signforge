@@ -42,7 +42,8 @@ export function resample(t: number[], fps: number): number[] {
 
 const sigmoid = (v: number) => 1 / (1 + Math.exp(-v));
 
-function gruLogits(m: Model, x: Float64Array, T: number, F: number): number[] {
+/** The GRU's final hidden state: the frozen features the output layer reads. */
+export function gruHidden(m: Model, x: Float64Array, T: number, F: number): Float64Array {
   const H = m.hidden;
   let h = new Float64Array(H);
   for (let s = 0; s < T; s++) {
@@ -62,14 +63,19 @@ function gruLogits(m: Model, x: Float64Array, T: number, F: number): number[] {
     }
     h = next;
   }
-  const C = m.b_head.length;
-  return Array.from({ length: C }, (_, c) => { let v = m.b_head[c]; for (let k = 0; k < H; k++) v += m.w_head[c * H + k] * h[k]; return v; });
+  return h;
+}
+
+export function headLogits(m: Model, h: ArrayLike<number>): number[] {
+  const H = m.hidden;
+  return m.b_head.map((bias, c) => { let v = bias; for (let k = 0; k < H; k++) v += m.w_head[c * H + k] * h[k]; return v; });
 }
 
 const r4 = (v: number) => Math.round(v * 1e4) / 1e4;
 
 /** model_input() + GRU + calibrated softmax over the learned signs (rounded to 4 places, as the API returns them). */
-export function scoreFrames(b: Bundle, m: Model, frames: InFrame[], learned: number[], vocab: string[]) {
+/** model_input(): the (model_frames x 27 x 2) feature contract, flattened. */
+export function modelInput(b: Bundle, frames: InFrame[]) {
   // model_input(): resample, fixed length, minimal-27 x/y, clip-level centre and scale (missing parts are zeros).
   const idx0 = resample(frames.map((f) => f.t), b.target_fps);
   const idx = fixedLength(idx0.length, b.model_frames).map((i) => idx0[i]);
@@ -88,7 +94,12 @@ export function scoreFrames(b: Bundle, m: Model, frames: InFrame[], learned: num
   cx /= L; cy /= L; dist /= L;
   if (dist > 0) for (let k = 0; k < x.length; k += 2) { x[k] = (x[k] - cx) / dist; x[k + 1] = (x[k + 1] - cy) / dist; }
 
-  const logits = gruLogits(m, x, L, F);
+  return { x, L, F };
+}
+
+export function scoreFrames(b: Bundle, m: Model, frames: InFrame[], learned: number[], vocab: string[]) {
+  const { x, L, F } = modelInput(b, frames);
+  const logits = headLogits(m, gruHidden(m, x, L, F));
   const z = learned.map((i) => logits[i] / m.temperature), top = Math.max(...z);
   const e = z.map((v) => Math.exp(v - top)), sum = e.reduce((a, v) => a + v, 0);
   const probs = e.map((v) => v / sum);

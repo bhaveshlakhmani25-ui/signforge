@@ -59,6 +59,7 @@ export type ActiveLearningQueueResponse = {
 };
 
 // GitHub Pages has no backend: that build reads frozen, public-safe JSON (deploy/pages/export_snapshot.py) and is read-only.
+export { loadBundle as loadModelBundle, readSnapshot };
 export const SNAPSHOT = process.env.NEXT_PUBLIC_SNAPSHOT === "1";
 const snapshotKey = (path: string) => path.replace(/[^A-Za-z0-9]+/g, "_").replace(/^_+|_+$/g, ""); // matches export_snapshot.py
 
@@ -76,9 +77,13 @@ async function readSnapshot<T>(path: string): Promise<T> {
 
 async function fromSnapshot<T>(path: string, method: string, body?: unknown): Promise<T> {
   if (path === "/api/interpret" && method === "POST") { // live camera: the same model, run in this browser
-    const [b, { interpretLocally }] = await Promise.all([loadBundle(), import("./localInterpret.ts")]);
+    const [b, { interpretLocally, referenceModel }, { activeHead }, { withHead }] = await Promise.all(
+      [loadBundle(), import("./localInterpret.ts"), import("./localCorpus.ts"), import("./headTraining.ts")]);
     const req = body as { frames: InFrame[]; project_id?: number | null };
-    return interpretLocally(b, req.frames, req.project_id ?? null) as T;
+    const pid = req.project_id ?? Number(Object.entries(b.models).find(([, m]) => m === referenceModel(b, null))?.[0]);
+    const { head } = await activeHead(pid); // an output layer this visitor retrained, if any
+    const use = head ? { ...b, models: { ...b.models, [pid]: withHead(b.models[pid], head) } } : b;
+    return { ...interpretLocally(use, req.frames, pid), retrained: !!head } as T;
   }
   // Recording: signers, consents, clips and reviews live in this browser only (lib/localCorpus.ts).
   const { localRequest, NOT_LOCAL } = await import("./localCorpus.ts");

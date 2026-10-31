@@ -6,6 +6,8 @@ Same safety rule as the hosted API: external datasets and DEMO DATA only, never 
   backend/.venv/bin/python deploy/pages/export_snapshot.py     # writes frontend/public/snapshot/, commit the result
 """
 import json, os, re, shutil, sqlite3, sys, tempfile
+
+import numpy as np
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -122,7 +124,21 @@ with TestClient(app) as c:
                    lambda fs: [{**f, "t": f["t"] * 6} for f in fs]):                                           # too_long
             frames = fn(base["frames"])
             qc_golden.append({**base, "frames": frames, "expected": run_qc(*frames_to_arrays(frames), base["width"], base["height"])})
-    put("/interpret/models", {"qc": {k: getattr(C, k) for k in dir(C) if k.startswith("QC_")},
+        # Frozen GRU features (final hidden state) of each reference run's own train / val / test clips, for retraining the
+        # output layer in the browser (frontend/lib/headTraining.ts). Same splits as the run, so "before" and "after" share a test set.
+        from app.services.triage import features, _model
+        for L in langs:
+            run = session.get(ModelRun, L["run_id"])
+            net = _model(run.id, run.weights_path, len(run.metrics["labels"]), run.config["hidden"])
+            val_ids = session.exec(select(Sample.id).where(Sample.project_id == run.project_id, Sample.split == "val", Sample.qc_passed == True)).all()  # noqa: E712
+            feats = {}
+            for name, ids in (("train", run.train_sample_ids), ("val", val_ids), ("test", run.test_sample_ids)):
+                smp = [session.get(Sample, i) for i in ids]
+                with torch.no_grad():
+                    _, h = net.gru(torch.from_numpy(np.stack([features(x) for x in smp])).flatten(2))
+                feats[name] = {"ids": [x.id for x in smp], "y": [x.sign_class_id for x in smp], "h": [[round(float(v), 5) for v in row] for row in h[-1]]}
+            put(f"/interpret/features/{L['project_id']}", feats)
+    put("/interpret/models", {"calibration_bins": TH.CALIBRATION_BINS, "max_ece": TH.RELIABILITY_MAX_ECE, "qc": {k: getattr(C, k) for k in dir(C) if k.startswith("QC_")},
                               "pose_l_wrist": S.POSE_L_WRIST, "pose_r_wrist": S.POSE_R_WRIST,
                               "verify_min_conf": TH.VERIFY_MIN_CONF, "verify_margin": TH.VERIFY_MARGIN,
                               "model_verify_enabled": TH.MODEL_VERIFY_ENABLED,"target_fps": C.TARGET_FPS, "model_frames": C.MODEL_FRAMES, "min_conf": TH.INTERPRET_MIN_CONF,

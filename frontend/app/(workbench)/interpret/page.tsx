@@ -15,7 +15,7 @@ import { transcribe, type Line } from "@/lib/transcript";
 type Reading = {
   state: "sign" | "unsure" | "still" | "no_hands" | "waiting" | "no_model";
   sign?: string; confidence?: number; top3?: { sign: string; p: number }[];
-  message?: string; vocabulary: string[]; run_id?: number; calibration_passed?: boolean;
+  message?: string; vocabulary: string[]; run_id?: number; calibration_passed?: boolean; retrained?: boolean;
 };
 type Said = { sign: string; confidence: number; at: number; kind: "sign" | "gesture" };
 type Check = { sample_id: number; true_sign: string; reading: Reading };
@@ -281,7 +281,9 @@ export default function InterpretPage() {
               Signs outside this list (including everyday slang and swear words) cannot be recognised yet: no public
               Indian Sign Language dataset contains them. Record them with consent in Collect samples and they can be learned.
             </p>
-            {reading?.run_id && <p className="mt-2 text-sm text-indigo">Model: run #{reading.run_id}{reading.calibration_passed === false && ", confidence not yet calibrated reliably"}.</p>}
+            {reading?.run_id && <p className="mt-2 text-sm text-indigo">Model: run #{reading.run_id}
+              {reading.retrained && <> with its output layer retrained in this browser (<Link href="/models" className="underline">change or revert</Link>)</>}
+              {reading.calibration_passed === false && ", confidence not yet calibrated reliably"}.</p>}
           </section>
         </aside>
       </div>
