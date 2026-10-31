@@ -56,7 +56,10 @@ def import_external_dataset_from_manifest(
     # Ensure project exists
     project = session.get(Project, project_id)
     if not project:
-        raise ValueError(f"Project {project_id} not found")
+        project = Project(id=project_id, name=f"ISL ({dataset_name})", target_language="Indian Sign Language", domain="external_benchmark")
+        session.add(project)
+        session.commit()
+        session.refresh(project)
 
     for item in samples_data:
         gloss = item["gloss"].strip().upper()

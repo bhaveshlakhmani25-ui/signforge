@@ -235,3 +235,17 @@ def test_withdraw_consent(client, setup_data):
     assert target is not None
     assert target["review_status"] == "rejected"
     assert "[CONSENT WITHDRAWN]" in target["provenance_note"]
+
+
+def test_import_external_dataset_manifest(setup_data):
+    from sqlmodel import Session
+    from app.db import engine
+    from app.services.external_dataset import import_external_dataset_from_manifest
+    from scripts.import_external import generate_mock_include_subset
+
+    manifest_path = generate_mock_include_subset("data/external/test_include")
+    with Session(engine) as session:
+        res = import_external_dataset_from_manifest(manifest_path, setup_data["project_id"], session)
+        assert res["dataset_name"] == "INCLUDE"
+        assert res["imported"] > 0
+
