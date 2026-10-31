@@ -34,9 +34,9 @@ function Meter({ value, max, label }: { value: number; max: number; label: strin
   const share = Math.min(1, value / Math.max(max, 1));
   return (
     <div className="min-w-0">
-      <p className="flex justify-between gap-2 text-sm"><span className="text-[#efeee9]/70">{label}</span><span className="f-mono tabular-nums">{value}/{max}</span></p>
-      <div className="mt-1.5 h-1 bg-[#efeee9]/15" role="presentation">
-        <div className="h-full bg-safelight" style={{ width: `${share * 100}%` }} />
+      <p className="flex justify-between gap-2 text-sm"><span className="text-indigo">{label}</span><span className="f-mono tabular-nums">{value}/{max}</span></p>
+      <div className="mt-1.5 h-1 bg-lavender/60" role="presentation">
+        <div className="h-full bg-navy" style={{ width: `${share * 100}%` }} />
       </div>
     </div>
   );
@@ -76,40 +76,40 @@ export default function Dashboard() {
           <h1 className="text-[clamp(2.2rem,4vw,3rem)] font-semibold leading-none">Dashboard</h1>
           <p className="mt-2 text-base text-indigo">{data ? `${data.project.name} · ${data.project.target_language}` : "Loading the project…"}</p>
         </div>
-        <Link href="/capture" className="bg-navy px-5 py-3 font-semibold text-white transition-colors hover:bg-safelight hover:text-navy">Record a sign</Link>
+        <Link href="/capture" className="rounded-full bg-navy px-6 py-3 font-semibold text-white transition-colors hover:bg-safelight hover:text-navy">Record a sign</Link>
       </header>
       {error && <ErrorBanner message={`Could not load the dashboard. ${error}`} onRetry={() => { setError(""); reload(); }} />}
 
       {data && (
         <>
-          <section aria-labelledby="next" className="bg-navy p-5 text-[#efeee9] md:p-8">
+          <section aria-labelledby="next" className="border border-lavender border-t-4 border-t-navy bg-white p-5 md:p-8">
             <div className="flex flex-wrap items-baseline justify-between gap-3">
               <h2 id="next" className="display text-[clamp(1.8rem,3vw,2.4rem)] font-semibold leading-none">What to record next</h2>
-              <Link href="/active-learning" className="text-base text-[#efeee9]/75 underline underline-offset-4 hover:text-white">Full queue and formula</Link>
+              <Link href="/active-learning" className="text-base text-indigo underline underline-offset-4 hover:text-navy">Full queue and formula</Link>
             </div>
             {data.queue.queue.length === 0
-              ? <p className="mt-4 text-[#efeee9]/75">Nothing to recommend. Add signs to the project, or every sign has reached its target.</p>
+              ? <p className="mt-4 text-indigo">Nothing to recommend. Add signs to the project, or every sign has reached its target.</p>
               : (
-                <ol className="mt-6 border-t border-[#efeee9]/20">
+                <ol className="mt-6 border-t border-lavender">
                   {data.queue.queue.slice(0, 3).map((q, i) => (
-                    <li key={q.sign_class_id} className="grid gap-4 border-b border-[#efeee9]/20 py-5 md:grid-cols-[2.5rem_1fr_15rem_auto] md:items-center">
-                      <span className="f-display text-2xl italic text-safelight">{i + 1}</span>
+                    <li key={q.sign_class_id} className="grid gap-4 border-b border-lavender py-5 md:grid-cols-[2.5rem_1fr_15rem_auto] md:items-center">
+                      <span className="f-display text-2xl italic text-amber-800">{i + 1}</span>
                       <div className="min-w-0">
-                        <p className="display text-[1.7rem] font-semibold leading-none">{q.gloss}{q.suggested_signer === "new_signer" && <span className="f-body ml-3 text-base font-normal text-[#efeee9]/70">from a new signer</span>}</p>
-                        <p className="mt-2 max-w-[60ch] text-base text-[#efeee9]/80">{q.reason.charAt(0).toUpperCase() + q.reason.slice(1)}</p>
+                        <p className="display text-[1.7rem] font-semibold leading-none">{q.gloss}{q.suggested_signer === "new_signer" && <span className="f-body ml-3 text-base font-normal text-indigo">from a new signer</span>}</p>
+                        <p className="mt-2 max-w-[60ch] text-base text-indigo">{q.reason.charAt(0).toUpperCase() + q.reason.slice(1)}</p>
                       </div>
                       <div className="grid gap-2">
                         <Meter label="Approved clips" value={q.approved_sample_count} max={q.target_samples} />
                         <Meter label="Signers" value={q.distinct_signer_count} max={q.target_signers} />
                       </div>
-                      <Link href={`/capture?sign=${q.sign_class_id}`} className="justify-self-start bg-[#efeee9] px-4 py-2.5 font-semibold text-navy transition-colors hover:bg-safelight">
+                      <Link href={`/capture?sign=${q.sign_class_id}`} className="justify-self-start rounded-full bg-navy px-5 py-2.5 font-semibold text-white transition-colors hover:bg-safelight hover:text-navy">
                         Record this sign<span className="sr-only">: {q.gloss}</span>
                       </Link>
                     </li>
                   ))}
                 </ol>
               )}
-            <p className="mt-4 text-sm text-[#efeee9]/65">
+            <p className="mt-4 text-sm text-indigo">
               {tied > 2 && `The top ${tied} signs are tied, so any of them is an equally good next take. `}
               Ranked by coverage gap and signer gap{data.queue.queue.some((q) => q.uncertainty != null) ? ", plus model uncertainty" : "; model uncertainty joins once a model is trained on this project"}.
             </p>
