@@ -61,7 +61,7 @@ if __name__ == "__main__":
     for d in sorted(Path(a.src).iterdir()):
         if not d.is_dir():
             continue
-        gloss = re.sub(r"^\d+\.\s*", "", d.name).strip().upper()
+        gloss = re.sub(r"[^A-Z0-9]+", "-", re.sub(r"^\d+\.\s*", "", d.name).upper()).strip("-")  # "you (plural)" -> YOU-PLURAL
         for f in sorted(d.glob("*.MOV"))[: a.limit]:
             rel = f"features/{d.name.split('.')[0]}_{f.stem}.npz"
             jobs.append((f, out / rel)); meta.append((gloss, f.stem, rel))
@@ -73,7 +73,7 @@ if __name__ == "__main__":
     (out / "manifest.json").write_text(json.dumps({
         "dataset_name": "INCLUDE", "dataset_version": "zenodo-4010759", "license": "CC BY 4.0",
         "citation": "Sridhar et al., INCLUDE: A Large Scale Dataset for Indian Sign Language Recognition, ACM MM 2020. doi:10.5281/zenodo.4010759",
-        "provenance_note": "INCLUDE Greetings category; no signer IDs and no official split in these zips; landmarks extracted locally, raw video not stored",
+        "provenance_note": f"INCLUDE {Path(a.src).name.replace('_', ' ')} category; no signer IDs and no official split in these zips; landmarks extracted locally, raw video not stored",
         "feature_schema_version": "mp-holistic-75-xyz-v1", "extractor": "mediapipe-python HolisticLandmarker (float16)",
         "extractor_model_sha": sha, "samples": samples}, indent=1))
     print(len(samples), "clips ->", out / "manifest.json")

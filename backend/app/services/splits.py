@@ -71,9 +71,11 @@ def session_groups(samples: list[dict], gap: int = 2) -> dict[int, int]:
 
 def assign_grouped_splits(samples: list[dict], seed: int = C.SEED) -> tuple[dict[int, str], str | None]:
     """External datasets: per sign, hold out whole session groups as frozen `test` and `val`, the rest `train`.
-    Once a test set exists it stays frozen; new clips only ever go to `train`. Signs with too few groups stay all-train."""
-    if any(s["split"] == "test" for s in samples):
-        return {s["id"]: "train" for s in samples if s["split"] == "unassigned"}, None
+    Once a sign has test clips they stay frozen and its new clips only ever go to `train`. A sign with no test clips yet
+    (e.g. a newly imported category) gets its own held-out groups, so it is evaluated without touching the others' test set.
+    Signs with too few groups stay all-train."""
+    frozen = any(s["split"] == "test" for s in samples)
+    tested = {s["sign_class_id"] for s in samples if s["split"] == "test"}
     rng = np.random.default_rng(seed)
     changes: dict[int, str] = {}
     by_class = defaultdict(list)
@@ -82,6 +84,12 @@ def assign_grouped_splits(samples: list[dict], seed: int = C.SEED) -> tuple[dict
     held = C.EXTERNAL_TEST_GROUPS_PER_SIGN + C.EXTERNAL_VAL_GROUPS_PER_SIGN
     for cls in sorted(by_class):
         rows = by_class[cls]
+        if cls in tested:
+            changes |= {s["id"]: "train" for s in rows if s["split"] == "unassigned"}
+            continue
+        if any(s["split"] != "unassigned" for s in rows):  # already trained on, never tested: cannot be held out honestly
+            changes |= {s["id"]: "train" for s in rows if s["split"] == "unassigned"}
+            continue
         groups = session_groups(rows)
         ids = sorted(set(groups.values()))
         order = [int(i) for i in rng.permutation(ids)] if len(ids) > held else []
@@ -89,4 +97,4 @@ def assign_grouped_splits(samples: list[dict], seed: int = C.SEED) -> tuple[dict
         val_g = set(order[C.EXTERNAL_TEST_GROUPS_PER_SIGN:held])
         for s in rows:
             changes[s["id"]] = "test" if groups[s["id"]] in test_g else "val" if groups[s["id"]] in val_g else "train"
-    return changes, SESSION_GROUPED
+    return changes, (None if frozen else SESSION_GROUPED)

@@ -52,6 +52,13 @@ def test_grouped_split_holds_out_whole_sessions_and_stays_frozen():
     again, strategy = assign_grouped_splits(rs + [new])
     assert strategy is None and again == {999: "train"}  # frozen: never re-drawn, new clips only train
 
+    # A newly imported sign gets its own held-out sessions; the frozen signs' splits do not change.
+    added = [{"id": 2000 + i, "sign_class_id": 7, "split": "unassigned", "external_sample_id": f"MVI_{9000 + (i // 3) * 30 + i % 3:04d}"}
+             for i in range(9)]
+    third, strategy = assign_grouped_splits(rs + added)
+    assert strategy is None and not any(k < 2000 for k in third)
+    assert {third[r["id"]] for r in added} == {"train", "val", "test"}
+
 
 def test_external_pool_trains_and_calibrates_on_val_judged_on_test():
     with TestClient(app) as client:
