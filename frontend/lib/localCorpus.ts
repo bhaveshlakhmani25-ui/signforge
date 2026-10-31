@@ -3,7 +3,7 @@
 // and the model check a port of triage.predict(), both checked by deploy/pages/check_local_interpret.ts.
 
 import type { TrainedHead } from "./headTraining.ts";
-import { at, learnedSigns, roundEven, referenceModel, resample, scoreFrames, type Bundle, type InFrame } from "./localInterpret.ts"; // explicit extension: deploy/pages/check_local_interpret.ts runs this file in Node
+import { at, learnedSigns, modelFor, roundEven, resample, scoreFrames, type Bundle, type InFrame } from "./localInterpret.ts"; // explicit extension: deploy/pages/check_local_interpret.ts runs this file in Node
 
 export type LocalBundle = Bundle & {
   qc: Record<string, number>; pose_l_wrist: number; pose_r_wrist: number;
@@ -73,17 +73,18 @@ export function runQc(b: LocalBundle, frames: InFrame[], width: number, height: 
 }
 
 /** Port of triage.predict(), minus the near-duplicate distance (other clips' landmarks are not in this browser). */
-function triage(b: LocalBundle, sampleId: number, gloss: string, qc: ReturnType<typeof runQc>, frames: InFrame[]): Record<string, unknown> & { status: string } {
+function triage(b: LocalBundle, sampleId: number, gloss: string, qc: ReturnType<typeof runQc>, frames: InFrame[],
+                projectId: number, language: string): Record<string, unknown> & { status: string } {
   const out: Record<string, unknown> = {
     sample_id: sampleId, claimed_sign: gloss, quality: { passed: qc.passed, failed_checks: qc.flags.filter((f) => f.severity === "error").map((f) => f.code) },
     model: null, match_confidence: null, predicted_sign: null, top3: [], per_sign_test_recall: null, calibration_note: null,
     is_near_duplicate: false, nearest_same_sign_distance: null, audited: false, auto_accept_enabled: b.model_verify_enabled,
   };
   if (!qc.passed) return { ...out, status: "auto_rejected", reason: "The automated check failed, so the clip needs to be recorded again." };
-  const m = referenceModel(b, null);
-  if (!m) return { ...out, status: "needs_review", reason: "No calibrated model exists yet, so a reviewer has to check this clip." };
+  const m = modelFor(b, projectId, language);
+  if (!m) return { ...out, status: "needs_review", reason: "No calibrated model exists yet for this sign language, so a reviewer has to check this clip." };
   const { learned, vocab } = learnedSigns(m);
-  out.model = { run_id: m.run_id, temperature: m.temperature, reliability_passed: m.calibration_passed, signs: vocab };
+  out.model = { run_id: m.run_id, project_id: m.project_id, temperature: m.temperature, reliability_passed: m.calibration_passed, signs: vocab };
   if (!vocab.includes(gloss)) return { ...out, status: "needs_review", reason: `The model has not learned ${gloss}, so it cannot score this clip. A reviewer has to check it.` };
   const { probs, top3 } = scoreFrames(b, m, frames, learned, vocab);
   const conf = probs[vocab.indexOf(gloss)], top = top3[0].sign;
@@ -207,7 +208,8 @@ export async function localRequest(path: string, method: string, body: unknown, 
       const B = await bundle(), qc = runQc(B, frames, width, height), sha = await sha256(frames);
       const dup = (await all("samples")).find((s) => s.project_id === b.project_id && s.feature_sha256 === sha);
       if (dup) { qc.flags.push({ code: "duplicate", severity: "error", message: `Identical landmarks already stored as sample #${dup.id}.` }); qc.passed = false; }
-      const sid = await nextId("samples"), t = triage(B, sid, String(sign.gloss), qc, frames);
+      const language = (await snap<{ id: number; target_language: string }[]>("/api/projects")).find((p) => p.id === b.project_id)?.target_language ?? "";
+      const sid = await nextId("samples"), t = triage(B, sid, String(sign.gloss), qc, frames, Number(b.project_id), language);
       const sample: Row = {
         id: sid, project_id: b.project_id, sign_class_id: sign.id, signer_id: signer.id, consent_id: consent.id, source: b.source,
         feature_path: "", feature_schema_version: "mp-holistic-75-xyz-v1", extractor: b.extractor, extractor_model_sha: b.extractor_model_sha,

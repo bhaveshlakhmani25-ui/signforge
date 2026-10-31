@@ -17,9 +17,10 @@ async function fetchDashboard(): Promise<Data> {
     api<ActiveLearningQueueResponse>(`/api/active-learning/queue?project_id=${project.id}`),
     api<Project[]>("/api/projects"),
   ]);
-  // The model check scores clips with the latest calibrated run of ANY project (in practice the INCLUDE one).
-  const all = (await Promise.all(projects.map((p) => p.id === project.id ? runs : api<ModelRun[]>(`/api/models/runs?project_id=${p.id}`)))).flat();
-  const reference = all.filter((r) => r.status === "succeeded" && r.metrics.calibration).sort((a, b) => b.id - a.id)[0] ?? null;
+  // The model check (triage.model_for) scores clips with this project's own calibrated model, else the newest one for the same sign language.
+  const latest = (rs: ModelRun[]) => rs.filter((r) => r.status === "succeeded" && r.metrics.calibration).sort((a, b) => b.id - a.id)[0] ?? null;
+  const same = projects.filter((p) => p.id !== project.id && p.target_language === project.target_language);
+  const reference = latest(runs) ?? latest((await Promise.all(same.map((p) => api<ModelRun[]>(`/api/models/runs?project_id=${p.id}`)))).flat());
   return { project, classes, samples, runs, queue, reference };
 }
 

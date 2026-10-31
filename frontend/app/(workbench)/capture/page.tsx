@@ -19,6 +19,8 @@ const OPTIONAL_USES = [
 ] as const;
 const LOW_HAND_Y = 0.9; // normalised: a wrist below this is at the bottom edge and hand tracking is lost
 const LOW_HAND_FRAMES = 5;
+const READY_MS = 1000; // shoulders and a hand must be in view this long before the countdown starts
+const READY_TIMEOUT_MS = 12_000;
 const CODE_RE = /^[A-Z0-9][A-Z0-9-]{1,15}$/;
 const section = `${card} space-y-3`;
 let demoSeed = Math.floor(Date.now() / 1000); // module scope: varies per page load so DEMO clips aren't exact duplicates
@@ -54,6 +56,10 @@ export default function CapturePage() {
   const [recommended, setRecommended] = useState(false); // opened from the Active learning page with ?sign=
   const [handsLow, setHandsLow] = useState(false);
   const [hands, setHands] = useState({ left: false, right: false }); // live: is each hand tracked right now
+  const [takes, setTakes] = useState(1); // takes recorded back to back
+  const [waiting, setWaiting] = useState(false); // waiting for the signer to be in frame before a take
+  const [session, setSession] = useState<Sample[]>([]); // every take saved since the last Record press
+  const readySince = useRef(0);
   const previewing = useRef(false);
   const handSeen = useRef({ left: 0, right: 0, at: 0 });
   const video = useRef<HTMLVideoElement>(null);
@@ -112,6 +118,9 @@ export default function CapturePage() {
     h.left = r.leftHandLandmarks[0] ? now : h.left;
     h.right = r.rightHandLandmarks[0] ? now : h.right;
     if (now - h.at > 200) { h.at = now; setHands({ left: now - h.left < 400, right: now - h.right < 400 }); }
+    const shoulders = r.poseLandmarks[0]?.[11] && r.poseLandmarks[0]?.[12];
+    const ready = !!shoulders && (now - h.left < 400 || now - h.right < 400);
+    readySince.current = ready ? readySince.current || now : 0;
     if (!overlayRef.current) return;
     smoothed.current = smooth(smoothed.current, { pose: r.poseLandmarks[0] ?? null, left: r.leftHandLandmarks[0] ?? null, right: r.rightHandLandmarks[0] ?? null });
     drawSkeleton(ctx, c.width, c.height, smoothed.current);
@@ -168,17 +177,43 @@ export default function CapturePage() {
     return stopRef.current === "cancel" ? null : frames;
   }
 
-  async function record() {
-    const v = video.current!;
-    setBusy(true); setResult(null); setUnsaved(null); setError("");
+  /** Resolves true once shoulders and a hand have been in view for READY_MS; false on timeout or Cancel. */
+  async function inFrame(take: string) {
+    const t0 = performance.now();
+    stopRef.current = null;
+    setWaiting(true);
     try {
-      for (let n = 3; n > 0; n--) { setStatus(`Starting in ${n}…`); await new Promise((r) => setTimeout(r, 1000)); }
-      setStatus(`Recording: sign “${sign?.gloss}” now. Recording stops by itself after ${MAX_RECORD_SECONDS} s.`);
-      const frames = await extract(v, MAX_RECORD_SECONDS);
-      if (!frames) { setBusy(false); setStatus("Cancelled. Nothing was saved."); return; }
-      const { sha256, delegate } = await loadHolistic();
-      await submit({ signClassId: classId!, frames, source: "captured", extractor: `${EXTRACTOR} ${delegate}`, sha: sha256, width: v.videoWidth, height: v.videoHeight });
+      while (!(readySince.current && performance.now() - readySince.current >= READY_MS)) {
+        if (stopRef.current === "cancel" || performance.now() - t0 > READY_TIMEOUT_MS) return false;
+        setStatus(`${take}Get in frame: both shoulders and at least one hand must be visible.`);
+        await new Promise((r) => setTimeout(r, 150));
+      }
+      return true;
+    } finally { setWaiting(false); }
+  }
+
+  async function record() {
+    const v = video.current!, saved: Sample[] = [];
+    setBusy(true); setResult(null); setUnsaved(null); setError(""); setSession([]);
+    try {
+      for (let k = 1; k <= takes; k++) {
+        const take = takes > 1 ? `Take ${k} of ${takes}. ` : "";
+        if (!(await inFrame(take))) {
+          setStatus(stopRef.current === "cancel" ? `Cancelled.${saved.length ? ` ${saved.length} earlier take(s) were saved.` : " Nothing was saved."}`
+            : "Couldn't see your shoulders and a hand for long enough. Sit back so your upper body is in the dashed box, in good light, and try again.");
+          break;
+        }
+        for (let n = k === 1 ? 3 : 2; n > 0; n--) { setStatus(`${take}Starting in ${n}…`); await new Promise((r) => setTimeout(r, 1000)); }
+        setStatus(`${take}Recording: sign “${sign?.gloss}” now. Recording stops by itself after ${MAX_RECORD_SECONDS} s.`);
+        const frames = await extract(v, MAX_RECORD_SECONDS);
+        if (!frames) { setStatus(`Cancelled.${saved.length ? ` ${saved.length} earlier take(s) were saved.` : " Nothing was saved."}`); break; }
+        const { sha256, delegate } = await loadHolistic();
+        const s = await submit({ signClassId: classId!, frames, source: "captured", extractor: `${EXTRACTOR} ${delegate}`, sha: sha256, width: v.videoWidth, height: v.videoHeight }, k === takes);
+        if (!s) break; // the error banner keeps the frames for a retry
+        saved.push(s); setSession([...saved]);
+      }
     } catch (e) { fail(e); }
+    setBusy(false);
   }
 
   async function upload(file: File) {
@@ -210,11 +245,11 @@ export default function CapturePage() {
     } catch (e) { fail(e); }
   }
 
-  async function submit(c: Captured) {
+  async function submit(c: Captured, last = true): Promise<Sample | null> {
     if (!c.frames.length) { // nothing to check or store; saving it would only add an empty row to the corpus
       setError("No video frames were processed, so nothing was saved. Keep this tab visible while recording or uploading, and try again.");
       setStatus("Failed."); setBusy(false);
-      return;
+      return null;
     }
     setStatus(`Running the automated check on ${c.frames.length} frames…`);
     const duration = c.frames.at(-1)?.t || 0;
@@ -228,12 +263,15 @@ export default function CapturePage() {
       setResult(s);
       setUnsaved(null);
       setStatus("Saved. Waiting for human review.");
+      if (last) setBusy(false);
+      return s;
     } catch (e) {
       setUnsaved(c);
       setError(`Not saved: ${e instanceof Error ? e.message : e} The ${c.frames.length} extracted frames are kept on this page, so you can retry without recording again.`);
       setStatus("Failed.");
+      setBusy(false);
+      return null;
     }
-    setBusy(false);
   }
 
   const canConsent = project && classId && CODE_RE.test(code) && understood && corpusOk;
@@ -319,8 +357,18 @@ export default function CapturePage() {
               <button className="rounded-lg bg-teal px-3 py-2 text-white" onClick={() => (stopRef.current = "stop")}>Stop and save</button>
               <button className="rounded-lg border border-red-700 px-3 py-2 text-red-800" onClick={() => (stopRef.current = "cancel")}>Cancel</button>
             </>
+          ) : waiting ? (
+            <button className="rounded-lg border border-red-700 px-3 py-2 text-red-800" onClick={() => (stopRef.current = "cancel")}>Cancel</button>
           ) : (
-            <button className="rounded-lg bg-indigo px-3 py-2 text-white disabled:opacity-60" disabled={!consent || busy || !cameraOn} onClick={record}>Record sign</button>
+            <>
+              <button className="rounded-lg bg-indigo px-3 py-2 text-white disabled:opacity-60" disabled={!consent || busy || !cameraOn} onClick={record}>
+                {takes > 1 ? `Record ${takes} takes` : "Record sign"}</button>
+              <label className="flex items-center gap-1 text-sm">Takes
+                <select className="rounded-lg border border-lavender p-1.5" value={takes} disabled={busy} onChange={(e) => setTakes(Number(e.target.value))}>
+                  {[1, 3, 5].map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </label>
+            </>
           )}
           <label className={`rounded-lg border border-indigo px-3 py-2 focus-within:ring-2 focus-within:ring-indigo ${!consent || busy ? "opacity-60" : "cursor-pointer"}`}>Upload a clip
             <input type="file" accept="video/*" className="sr-only" disabled={!consent || busy} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) upload(f); }} />
@@ -340,8 +388,17 @@ export default function CapturePage() {
             {result.source === "demo_fixture" && <DemoBadge className="ml-2" />}</h2>
           <p className="text-sm">
             {result.qc_passed ? "Passed the automated check." : "Failed the automated check."} Landmark completeness {(result.quality_score * 100).toFixed(0)}%
-            {" "}· {result.frame_count} frames · {result.qc_metrics.duration_s}s
+            {" "}· {result.frame_count} frames · {result.qc_metrics.duration_s}s · captured at {Math.round(result.fps)} fps
           </p>
+          {result.fps < 12 && result.source === "captured" && (
+            <p className="text-sm text-amber-900">Only {Math.round(result.fps)} frames per second were tracked. Close other tabs or apps, and sign a little slower, so fast hand movements are not missed.</p>
+          )}
+          {result.triage_status && (
+            <p className="text-sm"><strong>Model check:</strong>{" "}
+              {result.triage_status === "auto_rejected" ? "not run, because the automated check failed."
+                : <>{result.triage?.reason}{result.triage?.top3?.length ? <span className="block text-indigo">Closest: {result.triage.top3.map((t) => `${t.sign} ${Math.round(t.p * 100)}%`).join(" · ")}</span> : null}</>}
+            </p>
+          )}
           {result.quality_flags.length > 0 && (
             <ul className="list-disc pl-5 text-sm">{result.quality_flags.map((f) => <li key={f.code}><strong>{f.severity === "error" ? "Problem" : "Warning"}:</strong> {f.message}</li>)}</ul>
           )}
@@ -349,6 +406,15 @@ export default function CapturePage() {
             <p className="text-sm text-amber-900">To retake: sit further back and keep both hands inside the dashed box the whole time, in good light.</p>
           )}
           <p className="text-sm">Saved and <span className="rounded-md bg-amber-100 px-2 py-0.5 text-amber-950">waiting for human review</span>. The automated check can&apos;t tell whether the sign itself is correct; a reviewer decides that.</p>
+          {session.length > 1 && (
+            <div className="text-sm">
+              <p className="font-medium">This session: {session.filter((x) => x.qc_passed).length} of {session.length} takes passed the automated check.</p>
+              <ul className="mt-1 space-y-0.5">{session.map((x, i) => (
+                <li key={x.id}>Take {i + 1}: sample #{x.id} · {x.qc_passed ? "passed" : `failed (${x.quality_flags.filter((f) => f.severity === "error").map((f) => f.code.replaceAll("_", " ")).join(", ")})`}
+                  {x.match_confidence != null && ` · model match ${Math.round(x.match_confidence * 100)}%`}</li>
+              ))}</ul>
+            </div>
+          )}
           <Link href="/corpus" className="text-sm text-indigo underline">Review it in Corpus & review →</Link>
         </section>
       )}

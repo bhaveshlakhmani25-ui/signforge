@@ -5,7 +5,7 @@
 type Pts = number[][] | null;
 export type InFrame = { t: number; pose: Pts; left_hand: Pts; right_hand: Pts };
 export type Model = {
-  run_id: number; hidden: number; labels: number[]; train_classes: number[]; label_glosses: Record<string, string>;
+  run_id: number; project_id?: number; target_language?: string; hidden: number; labels: number[]; train_classes: number[]; label_glosses: Record<string, string>;
   temperature: number; calibration_passed: boolean;
   w_ih: number[]; w_hh: number[]; b_ih: number[]; b_hh: number[]; w_head: number[]; b_head: number[];
 };
@@ -115,6 +115,9 @@ export function learnedSigns(m: Model) {
 }
 
 /** The backend's reference_run(): with no project, the latest calibrated run of any project. */
+export const modelFor = (b: Bundle, projectId: number, language: string): Model | undefined => // triage.model_for()
+  b.models[String(projectId)] ?? Object.values(b.models).filter((m) => m.target_language === language).sort((p, q) => q.run_id - p.run_id)[0];
+
 export const referenceModel = (b: Bundle, projectId: number | null): Model | undefined =>
   projectId != null ? b.models[String(projectId)] : Object.values(b.models).sort((p, q) => q.run_id - p.run_id)[0];
 

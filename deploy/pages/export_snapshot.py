@@ -91,7 +91,7 @@ with TestClient(app) as c:
             r6 = lambda t: [round(float(v), 6) for v in t.flatten()]
             m = run.metrics
             models[str(L["project_id"])] = {
-                "run_id": run.id, "hidden": run.config["hidden"], "labels": m["labels"], "train_classes": m["train_classes"],
+                "run_id": run.id, "project_id": run.project_id, "target_language": L["target_language"], "hidden": run.config["hidden"], "labels": m["labels"], "train_classes": m["train_classes"],
                 "label_glosses": m["label_glosses"], "temperature": m["calibration"]["temperature"],
                 "calibration_passed": m["calibration"]["reliability_passed"],
                 "w_ih": r6(sd["gru.weight_ih_l0"]), "w_hh": r6(sd["gru.weight_hh_l0"]), "b_ih": r6(sd["gru.bias_ih_l0"]),

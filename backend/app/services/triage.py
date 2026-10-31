@@ -1,7 +1,8 @@
 """Model triage (redesign F1/F2): match score of a clip against the reference model, and the tier it lands in.
 
-The reference model is the latest succeeded run that has a calibration (in practice the INCLUDE external-pool run).
-It may belong to another project, so signs are matched by gloss. A match score never says a sign is correct.
+The reference model is the clip's own project's latest calibrated run, or else the latest calibrated run of a project in
+the same sign language (signs matched by gloss). A model of another sign language is never used. A match score never
+says a sign is correct.
 """
 import random
 from functools import lru_cache
@@ -12,7 +13,7 @@ from sqlmodel import Session, select
 
 from app.core import config as C
 from app.core import thresholds as TH
-from app.db.models import ModelRun, Sample, SignClass
+from app.db.models import ModelRun, Project, Sample, SignClass
 from app.services.baseline_model import GRUClassifier, predict_logits
 from app.services.calibration import softmax
 from app.services.preprocessing import model_input
@@ -32,6 +33,19 @@ def reference_run(session: Session, project_id: int | None = None) -> ModelRun |
         q = q.where(ModelRun.project_id == project_id)
     runs = session.exec(q.order_by(ModelRun.id.desc())).all()
     return next((r for r in runs if r.metrics.get("calibration") and r.weights_path), None)
+
+
+def model_for(session: Session, project_id: int) -> ModelRun | None:
+    """The model that scores a clip: its project's own, else the newest one for the same sign language."""
+    run = reference_run(session, project_id)
+    if run is not None:
+        return run
+    lang = session.get(Project, project_id).target_language
+    for p in session.exec(select(Project).where(Project.target_language == lang, Project.id != project_id)).all():
+        r = reference_run(session, p.id)
+        if r is not None and (run is None or r.id > run.id):
+            run = r
+    return run
 
 
 @lru_cache(maxsize=4)
@@ -71,9 +85,9 @@ def predict(session: Session, sample: Sample) -> dict:
     out["nearest_same_sign_distance"] = None if dist is None else round(dist, 4)
     out["is_near_duplicate"] = dist is not None and dist < TH.DUP_EPSILON
 
-    run = reference_run(session)
+    run = model_for(session, sample.project_id)
     if run is None:
-        return {**out, "status": "needs_review", "reason": "No calibrated model exists yet, so a reviewer has to check this clip."}
+        return {**out, "status": "needs_review", "reason": "No calibrated model exists yet for this sign language, so a reviewer has to check this clip."}
     m, cal = run.metrics, run.metrics["calibration"]
     glosses = {int(k): v for k, v in m["label_glosses"].items()}
     head = m["labels"]  # the output layer has a unit per project sign, including signs with no training clips

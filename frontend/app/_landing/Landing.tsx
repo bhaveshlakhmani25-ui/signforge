@@ -23,7 +23,9 @@ async function loadReadings(): Promise<Readings> {
     classes: await api<SignClass[]>(`/api/sign-classes?project_id=${p.id}`),
   })));
   const all = per.flatMap((x) => x.samples);
-  const run = per.flatMap((x) => x.runs).filter((r) => r.status === "succeeded" && r.metrics.calibration).sort((a, b) => b.id - a.id)[0] ?? null;
+  // The findings below describe INCLUDE, so report the latest calibrated model trained on an INCLUDE project.
+  const run = per.filter((x) => x.samples.some((s) => s.dataset_name === "INCLUDE")).flatMap((x) => x.runs)
+    .filter((r) => r.status === "succeeded" && r.metrics.calibration).sort((a, b) => b.id - a.id)[0] ?? null;
   const team = per.find((x) => x.samples.some((s) => s.source === "captured"));
   const queue = team ? await api<ActiveLearningQueueResponse>(`/api/active-learning/queue?project_id=${team.p.id}`) : null;
   const top = queue?.queue[0];

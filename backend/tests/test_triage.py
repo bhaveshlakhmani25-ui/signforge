@@ -75,8 +75,8 @@ def test_agreement_with_auto_accept_off_still_needs_review(env):
 def passing_run(monkeypatch):
     real = triage.reference_run
 
-    def patched(session):
-        run = real(session)
+    def patched(session, project_id=None):
+        run = real(session, project_id)
         cal = {**run.metrics["calibration"], "reliability_passed": True}
         return ModelRun(**{**run.model_dump(), "metrics": {**run.metrics, "calibration": cal}})  # detached copy, never saved
     monkeypatch.setattr(triage, "reference_run", patched)
@@ -177,3 +177,21 @@ def test_combined_pool_adds_approved_team_clips_and_keeps_the_frozen_test(env):
     assert run["status"] == "succeeded" and run["pool"] == "combined"
     assert clip["id"] in run["train_sample_ids"]
     assert sorted(run["test_sample_ids"]) == sorted(ext["test_sample_ids"]) and run["split_strategy"] == ext["split_strategy"]
+
+
+def test_clips_are_scored_only_by_a_model_of_their_own_sign_language(env):
+    c = env["client"]
+    def one_clip(language):
+        p = c.post("/api/projects", json={"name": f"NO-MODEL-{language}", "target_language": language}).json()["id"]
+        sign = c.post("/api/sign-classes", json={"project_id": p, "gloss": "A"}).json()["id"]
+        sid = c.post("/api/signers", json={"project_id": p, "code": "TEAM-9"}).json()["id"]
+        cid = c.post("/api/consents", json={"signer_id": sid, "consent_version": "v1", "purpose": "t", "allowed_uses": ["corpus_building"],
+                                            "retention": "landmarks_only", "confirmed": True}).json()["id"]
+        d = c.get("/api/demo-frames", params={"class_index": 0, "seed": 950}).json()
+        return c.post("/api/samples/capture", json={"project_id": p, "sign_class_id": sign, "signer_id": sid, "consent_id": cid, "source": "captured",
+                                                     "extractor": d["extractor"], "fps": d["fps"], "width": d["width"], "height": d["height"],
+                                                     "frames": d["frames"]}).json()
+    same, other = one_clip("ISL"), one_clip("ASL-TEST")
+    lang = {x["id"]: x["target_language"] for x in c.get("/api/projects").json()}
+    assert lang[same["triage"]["model"]["project_id"]] == "ISL"  # no model of its own: borrows an ISL project's model
+    assert other["triage"]["model"] is None and "this sign language" in other["triage"]["reason"]
