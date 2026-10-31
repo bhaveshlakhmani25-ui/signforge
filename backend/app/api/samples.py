@@ -10,6 +10,7 @@ from app.db import get_session
 from app.db.models import ConsentRecord, ReviewEvent, Sample, SignClass, Signer
 from app.schemas import CaptureIn, ReviewIn
 from app.services.landmark_schema import FEATURE_SCHEMA_VERSION
+from app.services.mock_policy import non_mock_sample_clause
 from app.services import landmark_schema as S
 from app.services.preprocessing import frames_to_arrays, resample
 from app.services.quality_checks import run_qc
@@ -80,7 +81,7 @@ def list_samples(project_id: int, sign_class_id: Optional[int] = None, signer_id
         if val is not None:
             q = q.where(col == val)
     if not include_demo:  # DEMO DATA never enters real listings/evaluation by default
-        q = q.where(Sample.source != "demo_fixture")
+        q = q.where(non_mock_sample_clause())
     return session.exec(q.order_by(Sample.id.desc())).all()
 
 

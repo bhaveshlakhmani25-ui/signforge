@@ -45,6 +45,9 @@ def import_external_dataset_from_manifest(
     license_str = manifest.get("license", "Unknown")
     citation = manifest.get("citation", "")
     provenance_note = manifest.get("provenance_note", f"Imported from {dataset_name}")
+    is_mock = bool(manifest.get("is_mock")) or dataset_name.upper().startswith("MOCK") or "[MOCK]" in provenance_note
+    if is_mock and not provenance_note.startswith("[MOCK]"):
+        provenance_note = f"[MOCK] {provenance_note}"
     schema_version = manifest.get("feature_schema_version", FEATURE_SCHEMA_VERSION)
     extractor = manifest.get("extractor", "mediapipe-holistic-python")
     extractor_model_sha = manifest.get("extractor_model_sha", "")
@@ -93,8 +96,11 @@ def import_external_dataset_from_manifest(
             session.commit()
             session.refresh(sc)
 
-        # 2. Signer (Pseudonymous with dataset prefix)
-        clean_code = f"EXT-{dataset_name[:3].upper()}-{ext_signer_id}"[:16]
+        # 2. Signer (Pseudonymous with dataset prefix, isolated for mock)
+        if is_mock:
+            clean_code = f"EXT-MOCK-{ext_signer_id}"[:16]
+        else:
+            clean_code = f"EXT-{dataset_name[:3].upper()}-{ext_signer_id}"[:16]
         signer = session.exec(
             select(Signer).where(Signer.project_id == project_id, Signer.code == clean_code)
         ).first()
