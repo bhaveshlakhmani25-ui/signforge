@@ -16,3 +16,6 @@ backup-2026-10-22/
 *.tsbuildinfo
 __pycache__/
 .pytest_cache/
+
+# Downloaded public datasets (large, licence-bound)
+data/raw/
