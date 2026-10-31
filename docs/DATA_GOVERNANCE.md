@@ -12,6 +12,11 @@
 
 **Demo data.** `source=demo_fixture` samples are synthetic, labelled DEMO DATA everywhere and excluded from default listings and any evaluation.
 
-**Not yet implemented.** Consent withdrawal and deletion of a signer's samples, export manifest, dataset versioning. Do not collect from real signers beyond a demo until withdrawal exists.
+**Deletion and withdrawal.**
+- *Delete a sample* (Corpus → Details & review → Delete this sample, or `DELETE /api/samples/{id}`): erases the landmark `.npz`, its review events and its row.
+- *Withdraw consent* (Corpus → Signers & consent, or `POST /api/consents/{id}/withdraw` with `{"delete_samples": true|false}`): sets the consent to `withdrawn`, which immediately blocks new captures (403), model training and public replay for that consent. With `delete_samples` it also erases every sample recorded under it. Repeating the call is safe.
+- Limits: models already trained on deleted samples are not retrained (their run records keep the sample ids but not the data); deleting a frozen-test-set sample means older results can no longer be reproduced; files already exported are outside the app's control. Deleted data leaves no tombstone.
+
+**Not yet implemented.** Export manifest, dataset versioning, authentication (anyone who can reach the API can delete or withdraw), database migrations.
 
 **Sign glosses.** The 10 seeded ISL glosses are placeholders and must be confirmed with a native ISL signer; sign languages are distinct languages and ISL signs must not be borrowed from ASL.

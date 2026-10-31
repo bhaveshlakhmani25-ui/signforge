@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 
-from app.api.projects import get_or_404, save
+from app.api.projects import delete_sample, get_or_404, save
 from app.db import get_session
 from app.db.models import ConsentRecord, ReviewEvent, Sample, SignClass, Signer
 from app.schemas import CaptureIn, ReviewIn
@@ -114,22 +114,7 @@ def review(sample_id: int, body: ReviewIn, session: Session = Depends(get_sessio
     return save(session, sample)
 
 
-@router.delete("/{sample_id}")
-def delete_sample(sample_id: int, session: Session = Depends(get_session)):
-    """Deletes a sample and its stored landmark features from disk."""
-    sample = get_or_404(session, Sample, sample_id)
-    if sample.feature_path and os.path.exists(sample.feature_path):
-        try:
-            os.remove(sample.feature_path)
-        except OSError:
-            pass
-
-    # Remove review events
-    reviews = session.exec(select(ReviewEvent).where(ReviewEvent.sample_id == sample_id)).all()
-    for rev in reviews:
-        session.delete(rev)
-
-    session.delete(sample)
+@router.delete("/{sample_id}", status_code=204)
+def delete(sample_id: int, session: Session = Depends(get_session)):
+    delete_sample(session, get_or_404(session, Sample, sample_id))
     session.commit()
-    return {"deleted": True, "sample_id": sample_id}
-

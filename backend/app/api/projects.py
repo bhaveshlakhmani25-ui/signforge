@@ -3,8 +3,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 
 from app.db import get_session
-from app.db.models import ConsentRecord, Project, Sample, SignClass, Signer
-from app.schemas import ConsentIn, ProjectIn, SignClassIn, SignerIn
+from app.db.models import ConsentRecord, Project, ReviewEvent, Sample, SignClass, Signer
+from app.schemas import ConsentIn, ProjectIn, SignClassIn, SignerIn, WithdrawIn
+from app.services.storage import delete_features
 
 router = APIRouter(prefix="/api")
 
@@ -21,6 +22,24 @@ def save(session: Session, obj):
     session.commit()
     session.refresh(obj)
     return obj
+
+
+def delete_sample(session: Session, sample: Sample) -> None:
+    """Erase a sample's landmark file, its review events and its row. The caller commits.
+    Models already trained on it are not retrained; their runs keep the ids but not the data."""
+    delete_features(sample.feature_path)
+    for e in session.exec(select(ReviewEvent).where(ReviewEvent.sample_id == sample.id)).all():
+        session.delete(e)
+    session.delete(sample)
+
+
+def delete_sample(session: Session, sample: Sample) -> None:
+    """Erase a sample's landmark file, its review events and its row. The caller commits.
+    Models already trained on it are not retrained; their runs keep the ids but not the data."""
+    delete_features(sample.feature_path)
+    for e in session.exec(select(ReviewEvent).where(ReviewEvent.sample_id == sample.id)).all():
+        session.delete(e)
+    session.delete(sample)
 
 
 @router.get("/projects")
@@ -68,36 +87,20 @@ def create_consent(body: ConsentIn, session: Session = Depends(get_session)):
 
 
 @router.post("/consents/{consent_id}/withdraw")
-def withdraw_consent(consent_id: int, delete_samples: bool = False, session: Session = Depends(get_session)):
-    """
-    Withdraws consent. Marks status as 'withdrawn'. Disqualifies associated samples from training/export.
-    Optionally deletes features and sample records if delete_samples=True.
-    """
+def withdraw_consent(consent_id: int, body: WithdrawIn, session: Session = Depends(get_session)):
+    """Stops all future use (capture, training, public replay). Optionally erases the samples recorded under it."""
     consent = get_or_404(session, ConsentRecord, consent_id)
     consent.status = "withdrawn"
     session.add(consent)
-
-    affected = session.exec(select(Sample).where(Sample.consent_id == consent_id)).all()
-    deleted_count = 0
-    for s in affected:
-        if delete_samples:
-            if s.feature_path and os.path.exists(s.feature_path):
-                try:
-                    os.remove(s.feature_path)
-                except OSError:
-                    pass
-            session.delete(s)
-            deleted_count += 1
-        else:
+    deleted = 0
+    if body.delete_samples:
+        for s in session.exec(select(Sample).where(Sample.consent_id == consent_id)).all():
+            delete_sample(session, s)
+            deleted += 1
+    else:
+        for s in session.exec(select(Sample).where(Sample.consent_id == consent_id)).all():
             s.review_status = "rejected"
             s.provenance_note = ((s.provenance_note or "") + " [CONSENT WITHDRAWN]").strip()
             session.add(s)
-
     session.commit()
-    return {
-        "status": "withdrawn",
-        "consent_id": consent_id,
-        "samples_affected": len(affected),
-        "samples_deleted": deleted_count,
-    }
-
+    return {"status": consent.status, "deleted_samples": deleted}

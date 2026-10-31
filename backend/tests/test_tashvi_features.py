@@ -199,8 +199,7 @@ def test_delete_sample(client, setup_data):
 
     # Delete sample
     del_res = client.delete(f"/api/samples/{s['id']}")
-    assert del_res.status_code == 200
-    assert del_res.json()["deleted"] is True
+    assert del_res.status_code == 204
 
     # Feature file on disk must be removed
     assert not os.path.exists(feat_path)
@@ -226,10 +225,9 @@ def test_withdraw_consent(client, setup_data):
     }).raise_for_status()
 
     # Withdraw consent with delete_samples=False
-    r = client.post(f"/api/consents/{consent['id']}/withdraw", params={"delete_samples": False})
+    r = client.post(f"/api/consents/{consent['id']}/withdraw", json={"delete_samples": False})
     assert r.status_code == 200
-    assert r.json()["status"] == "withdrawn"
-    assert r.json()["samples_affected"] == 1
+    assert r.json() == {"status": "withdrawn", "deleted_samples": 0}
 
     # Check sample is now marked rejected and provenance note updated
     updated_sample = client.get(f"/api/samples", params={"project_id": setup_data["project_id"]}).json()

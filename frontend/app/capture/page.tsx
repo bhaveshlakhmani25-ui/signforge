@@ -15,6 +15,8 @@ const OPTIONAL_USES = [
   ["research_publication", "Include results based on my samples, only in aggregate, in research publications."],
   ["public_release", "Show a replay of my landmarks (a moving stick figure, never video) in public SIGNFORGE demos."],
 ] as const;
+const LOW_HAND_Y = 0.9; // normalised: a wrist below this is at the bottom edge and hand tracking is lost
+const LOW_HAND_FRAMES = 5;
 const CODE_RE = /^[A-Z0-9][A-Z0-9-]{1,15}$/;
 const section = `${card} space-y-3`;
 let demoSeed = Math.floor(Date.now() / 1000); // module scope: varies per page load so DEMO clips aren't exact duplicates
@@ -47,12 +49,15 @@ export default function CapturePage() {
   const [result, setResult] = useState<Sample | null>(null);
   const [unsaved, setUnsaved] = useState<Captured | null>(null); // extracted landmarks kept if saving fails
   const [consenting, setConsenting] = useState(false);
+  const [recommended, setRecommended] = useState(false); // opened from the Active learning page with ?sign=
+  const [handsLow, setHandsLow] = useState(false);
   const video = useRef<HTMLVideoElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const stream = useRef<MediaStream | null>(null);
   const stopRef = useRef<null | "stop" | "cancel">(null);
   const overlayRef = useRef(true);
   const smoothed = useRef(EMPTY);
+  const lowFrames = useRef(0);
 
   useEffect(() => {
     (async () => {
@@ -61,7 +66,10 @@ export default function CapturePage() {
       const cs = await api<SignClass[]>(`/api/sign-classes?project_id=${p.id}`);
       setProject(p);
       setClasses(cs);
-      setClassId(cs[0]?.id ?? null);
+      const want = Number(new URLSearchParams(location.search).get("sign"));
+      const pre = cs.find((c) => c.id === want);
+      setClassId((pre ?? cs[0])?.id ?? null);
+      setRecommended(!!pre);
     })().catch((e) => setError(`Could not load the project. ${e.message}`));
     return () => stream.current?.getTracks().forEach((t) => t.stop());
   }, []);
@@ -90,6 +98,10 @@ export default function CapturePage() {
     if (c.width !== v.videoWidth || c.height !== v.videoHeight) { c.width = v.videoWidth; c.height = v.videoHeight; } // resizing reallocates the canvas
     const ctx = c.getContext("2d")!;
     ctx.clearRect(0, 0, c.width, c.height);
+    // Clips #94/#95 failed because the signing hand sat at or below the bottom edge of the frame.
+    const wrists = [r.poseLandmarks[0]?.[15], r.poseLandmarks[0]?.[16]];
+    lowFrames.current = wrists.some((w) => w && w.y > LOW_HAND_Y) ? lowFrames.current + 1 : 0;
+    setHandsLow(lowFrames.current >= LOW_HAND_FRAMES);
     if (!overlayRef.current) return;
     smoothed.current = smooth(smoothed.current, { pose: r.poseLandmarks[0] ?? null, left: r.leftHandLandmarks[0] ?? null, right: r.rightHandLandmarks[0] ?? null });
     drawSkeleton(ctx, c.width, c.height, smoothed.current);
@@ -126,9 +138,12 @@ export default function CapturePage() {
   async function extract(v: HTMLVideoElement, maxSeconds: number) {
     stopRef.current = null;
     smoothed.current = EMPTY;
+    lowFrames.current = 0;
+    v.scrollIntoView({ block: "nearest" }); // an off-screen <video> may never paint, and then no frames reach the extractor
     setRecording(true);
     const frames = await extractFromVideo(v, (t) => t >= maxSeconds || stopRef.current !== null, draw);
     setRecording(false);
+    setHandsLow(false);
     return stopRef.current === "cancel" ? null : frames;
   }
 
@@ -175,6 +190,11 @@ export default function CapturePage() {
   }
 
   async function submit(c: Captured) {
+    if (!c.frames.length) { // nothing to check or store; saving it would only add an empty row to the corpus
+      setError("No video frames were processed, so nothing was saved. Keep this tab visible while recording or uploading, and try again.");
+      setStatus("Failed."); setBusy(false);
+      return;
+    }
     setStatus(`Running the automated check on ${c.frames.length} frames…`);
     const duration = c.frames.at(-1)?.t || 0;
     try {
@@ -246,11 +266,14 @@ export default function CapturePage() {
       </section>
 
       <section className={section} aria-labelledby="s3">
-        <h2 id="s3" className="font-semibold">3. Record or upload{sign && <> · prompt: <span className="text-indigo">“{sign.gloss}”</span></>}</h2>
+        <h2 id="s3" className="font-semibold">3. Record or upload{sign && <> · prompt: <span className="text-indigo">“{sign.gloss}”</span></>}
+          {recommended && <span className="ml-2 rounded-md bg-teal/15 px-2 py-0.5 text-xs font-normal text-teal">Recommended by the next-sample queue</span>}</h2>
         <div className="relative aspect-video w-full max-w-2xl overflow-hidden rounded-lg bg-navy">
           {/* Mirrored for display only; extraction reads the un-mirrored frames. */}
           <video ref={video} playsInline muted className={`absolute inset-0 h-full w-full object-contain ${cameraOn ? "-scale-x-100" : ""}`} />
           <canvas ref={canvas} aria-hidden className={`absolute inset-0 h-full w-full object-contain ${cameraOn ? "-scale-x-100" : ""}`} />
+          {cameraOn && <div aria-hidden className="pointer-events-none absolute inset-x-[3%] top-[4%] bottom-[14%] rounded-lg border-2 border-dashed border-lavender/70" />}
+          {handsLow && cameraOn && <p role="status" className="absolute inset-x-0 bottom-0 bg-amber-100 p-2 text-center text-sm font-medium text-amber-950">A hand is at the bottom of the frame. Raise your hands so they stay inside the dashed box.</p>}
           {!cameraOn && !busy && <p className="absolute inset-0 grid place-items-center p-4 text-center text-sm text-lavender">Camera is off</p>}
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -271,6 +294,7 @@ export default function CapturePage() {
           <button className="rounded-lg border border-amber-600 px-3 py-2 text-amber-900 disabled:opacity-60" disabled={!consent || busy} onClick={useDemo}>Use DEMO DATA (no webcam)</button>
           <label className="ml-auto flex items-center gap-2 text-sm"><input type="checkbox" checked={overlay} onChange={(e) => toggleOverlay(e.target.checked)} /> Show landmark overlay</label>
         </div>
+        <p className="text-xs">Sit back so your head and both hands stay inside the dashed box, and sign above your waist. Hands that drop out of the frame are the most common reason a clip fails the automated check.</p>
         {!consent && <p className="text-xs">Record consent first. Recording, uploading and DEMO DATA stay off until then.</p>}
         <p aria-live="polite" className="text-sm font-medium">{status}</p>
       </section>
@@ -285,6 +309,9 @@ export default function CapturePage() {
           </p>
           {result.quality_flags.length > 0 && (
             <ul className="list-disc pl-5 text-sm">{result.quality_flags.map((f) => <li key={f.code}><strong>{f.severity === "error" ? "Problem" : "Warning"}:</strong> {f.message}</li>)}</ul>
+          )}
+          {result.quality_flags.some((f) => f.code === "hands_missing" || f.code === "out_of_frame") && (
+            <p className="text-sm text-amber-900">To retake: sit further back and keep both hands inside the dashed box the whole time, in good light.</p>
           )}
           <p className="text-sm">Saved and <span className="rounded-md bg-amber-100 px-2 py-0.5 text-amber-950">waiting for human review</span>. The automated check can&apos;t tell whether the sign itself is correct; a reviewer decides that.</p>
           <Link href="/corpus" className="text-sm text-indigo underline">Review it in Corpus & review →</Link>
