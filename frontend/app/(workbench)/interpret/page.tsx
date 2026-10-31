@@ -8,8 +8,9 @@ import LandmarkReplay from "@/components/LandmarkReplay";
 import { card, ErrorBanner } from "@/components/ui";
 import { api, type Frame } from "@/lib/api";
 import { expressionOf, GestureFilter, type Expression, type Gesture } from "@/lib/gestures";
-import { loadHolistic, toFrame, trackVideo } from "@/lib/holistic";
+import { extractFromVideo, loadHolistic, toFrame, trackVideo } from "@/lib/holistic";
 import { drawSkeleton, EMPTY, smooth } from "@/lib/skeleton";
+import { transcribe, type Line } from "@/lib/transcript";
 
 type Reading = {
   state: "sign" | "unsure" | "still" | "no_hands" | "waiting" | "no_model";
@@ -22,6 +23,8 @@ type Language = { project_id: number; name: string; target_language: string; run
 
 const WINDOW_S = 2.5; // about one INCLUDE clip: the model reads the last 2.5 s of signing
 const EVERY_MS = 600; // how often the window is read
+const UPLOAD_EVERY_S = 0.25; // an upload is not live, so read it more densely: a short sign still gets two windows in a row
+const MAX_UPLOAD_S = 30; // landmarks are extracted at playback speed, so long videos take as long as they play
 
 export default function InterpretPage() {
   const video = useRef<HTMLVideoElement>(null);
@@ -282,7 +285,87 @@ export default function InterpretPage() {
           </section>
         </aside>
       </div>
+      <UploadTranscript projectId={lang} />
     </div>
+  );
+}
+
+/** Reads an uploaded video the way the live camera does: 2.5 s windows every 0.6 s, a sign kept once read twice in a row.
+ *  Timing uses the video's own clock, so the transcript says where in the video each sign was read. */
+function UploadTranscript({ projectId }: { projectId: number | null }) {
+  const video = useRef<HTMLVideoElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState("");
+  const [error, setError] = useState("");
+  const [lines, setLines] = useState<Line[] | null>(null);
+
+  async function run(file: File) {
+    const v = video.current!, url = URL.createObjectURL(file); // the video stays in this browser
+    setBusy(true); setError(""); setLines(null);
+    try {
+      setStatus("Loading the landmark model…");
+      await loadHolistic();
+      v.src = url;
+      await v.play();
+      setStatus(`Extracting landmarks (up to the first ${MAX_UPLOAD_S} s). Keep this tab visible: it plays at normal speed.`);
+      const frames = await extractFromVideo(v, (t) => t >= MAX_UPLOAD_S);
+      v.pause();
+      if (!frames.length) throw new Error("No video frames were processed. Keep this tab visible and try again.");
+      const end = frames.at(-1)!.t;
+      const out = await transcribe(frames, (win) => api<Reading>("/api/interpret", { body: { frames: win, project_id: projectId } }),
+                                   WINDOW_S, UPLOAD_EVERY_S, (e) => setStatus(`Reading the video: ${e.toFixed(1)} of ${end.toFixed(1)} s…`));
+      setLines(out);
+      setStatus(`Read ${frames.length} frames from ${end.toFixed(1)} s of video.`);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(/background|interrupted/i.test(msg) ? "The browser paused the video because this tab went to the background. Keep the tab visible and upload again." : msg);
+      setStatus("");
+    } finally {
+      v.pause(); v.removeAttribute("src"); URL.revokeObjectURL(url); setBusy(false);
+    }
+  }
+
+  const signs = lines?.filter((l) => l.sign) ?? [];
+  return (
+    <section aria-labelledby="upload-h" className={card}>
+      <h2 id="upload-h" className="display text-2xl font-semibold">Interpret an uploaded video</h2>
+      <p className="mt-1 max-w-[70ch] text-sm text-indigo">
+        Upload a video of signing and get a transcript with the time each sign was read. The video is processed in this browser and never
+        uploaded; only landmarks are scored. The model learned from short clips of single signs, so continuous signing reads less reliably.
+      </p>
+      <div className="mt-4 grid gap-4 md:grid-cols-[16rem_1fr]">
+        <div className="relative aspect-video overflow-hidden bg-[#0c0c0b]">
+          <video ref={video} playsInline muted className="absolute inset-0 h-full w-full object-contain" />
+          {!busy && <p className="absolute inset-0 grid place-items-center text-sm text-[#efeee9]/60">No video</p>}
+        </div>
+        <div className="space-y-3">
+          <label className={`inline-block rounded-full bg-navy px-6 py-3 font-semibold text-white focus-within:ring-2 focus-within:ring-indigo ${busy ? "opacity-60" : "cursor-pointer hover:bg-safelight hover:text-navy"}`}>
+            {busy ? "Reading…" : "Upload a video"}
+            <input type="file" accept="video/*" className="sr-only" disabled={busy} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) run(f); }} />
+          </label>
+          <p aria-live="polite" className="text-sm text-indigo">{status}</p>
+          {error && <ErrorBanner message={error} />}
+          {lines && (
+            <div>
+              <p className="f-display text-[1.6rem] leading-snug">
+                {signs.length ? signs.map((l) => l.sign!.toLowerCase().replaceAll("-", " ")).join(" · ") : "No sign was read with enough confidence."}
+              </p>
+              {lines.length > 0 && (
+                <ol className="mt-3 space-y-1 text-sm">
+                  {lines.map((l, i) => (
+                    <li key={i} className="flex gap-3">
+                      <span className="f-mono w-14 shrink-0 text-indigo">{l.t.toFixed(1)} s</span>
+                      {l.sign ? <span><strong>{l.sign}</strong> {Math.round(l.p! * 100)}%</span>
+                        : <span className="text-indigo">not sure{l.note && ` (closest ${l.note}${l.p != null ? ` ${Math.round(l.p * 100)}%` : ""})`}</span>}
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
   );
 }
 
