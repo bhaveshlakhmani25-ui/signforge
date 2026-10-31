@@ -69,7 +69,7 @@ The repo enables the **ponytail** plugin in `.claude/settings.json`; Claude Code
 ### GitHub Pages without a backend (public read-only demo)
 
 If the repo variable `API_URL` is unset, the Pages build runs in snapshot mode: it reads frozen JSON from `frontend/public/snapshot/` instead of calling an API.
-It holds external datasets and DEMO DATA only (never team clips, signers, consents or reviews) and is read-only; recording, review, training and the live camera need the backend.
+It holds external datasets and DEMO DATA only (never team clips, signers, consents or reviews) and is read-only: recording, review and training need the backend. The live camera (Interpret, Learn signs) works: the interpreter's GRU runs in the browser (`frontend/lib/localInterpret.ts`), and `node deploy/pages/check_local_interpret.ts` checks it against the backend's own readings.
 Refresh it after changing the data or models:
 
 ```bash

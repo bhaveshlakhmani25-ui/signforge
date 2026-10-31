@@ -73,6 +73,43 @@ with TestClient(app) as c:
                 pool[r.json()["sample_id"]] = r.json()
         put(f"/api/interpret/test-clip?project_id={L['project_id']}", list(pool.values()))
         need_landmarks.update(pool)
+    # Live camera without a backend: the interpreter's GRU weights + settings, run in the browser by frontend/lib/localInterpret.ts.
+    import torch
+    from app.core import config as C, thresholds as TH
+    from app.db.models import ModelRun, Sample
+    from app.services import landmark_schema as S
+    from app.services.storage import load_features
+    from sqlmodel import Session
+    from app.db import engine
+    models, golden = {}, []
+    with Session(engine) as session:
+        for L in langs:
+            run = session.get(ModelRun, L["run_id"])
+            sd = torch.load(run.weights_path)
+            r6 = lambda t: [round(float(v), 6) for v in t.flatten()]
+            m = run.metrics
+            models[str(L["project_id"])] = {
+                "run_id": run.id, "hidden": run.config["hidden"], "labels": m["labels"], "train_classes": m["train_classes"],
+                "label_glosses": m["label_glosses"], "temperature": m["calibration"]["temperature"],
+                "calibration_passed": m["calibration"]["reliability_passed"],
+                "w_ih": r6(sd["gru.weight_ih_l0"]), "w_hh": r6(sd["gru.weight_hh_l0"]), "b_ih": r6(sd["gru.bias_ih_l0"]),
+                "b_hh": r6(sd["gru.bias_hh_l0"]), "w_head": r6(sd["head.weight"]), "b_head": r6(sd["head.bias"])}
+            # Reference readings from the real backend, for checking the browser port (kept out of the public site).
+            parts = (("pose", S.POSE), ("left_hand", S.LEFT_HAND), ("right_hand", S.RIGHT_HAND))
+            for sid in run.test_sample_ids[:8]:
+                f = load_features(session.get(Sample, sid).feature_path)
+                frames = [{"t": float(t), **{k: f["points"][i, sl].tolist() if f["present"][i, j] else None for j, (k, sl) in enumerate(parts)}}
+                          for i, t in enumerate(f["t"])]
+                for fr in frames:  # the API takes pose points as x,y,z,visibility
+                    fr["pose"] = [[*pt, 1.0] for pt in fr["pose"]] if fr["pose"] else None
+                body = {"frames": frames, "project_id": L["project_id"]}
+                golden.append({**body, "expected": c.post("/api/interpret", json=body).json()})
+    put("/interpret/models", {"target_fps": C.TARGET_FPS, "model_frames": C.MODEL_FRAMES, "min_conf": TH.INTERPRET_MIN_CONF,
+                              "min_hand_share": TH.INTERPRET_MIN_HAND_SHARE, "min_motion": TH.INTERPRET_MIN_MOTION,
+                              "minimal_27": S.MINIMAL_27, "shoulder_nodes_27": list(S.SHOULDER_NODES_27),
+                              "lh_wrist": S.LH_WRIST, "rh_wrist": S.RH_WRIST, "models": models})
+    (ROOT / "deploy" / "pages" / "golden.json").write_text(json.dumps(golden))
+
     for sid in sorted(need_landmarks):
         r = c.get(f"/api/samples/{sid}/landmarks")
         if r.status_code == 200:

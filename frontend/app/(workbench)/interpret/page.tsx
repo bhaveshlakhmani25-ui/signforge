@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import CameraModes from "@/components/CameraModes";
 import LandmarkReplay from "@/components/LandmarkReplay";
 import { card, ErrorBanner } from "@/components/ui";
-import { SNAPSHOT, api, type Frame } from "@/lib/api";
+import { api, type Frame } from "@/lib/api";
 import { expressionOf, GestureFilter, type Expression, type Gesture } from "@/lib/gestures";
 import { loadHolistic, toFrame, trackVideo } from "@/lib/holistic";
 import { drawSkeleton, EMPTY, smooth } from "@/lib/skeleton";
@@ -252,7 +252,7 @@ export default function InterpretPage() {
           <div className="flex flex-wrap gap-3">
             {on
               ? <button onClick={stop} className="rounded-full border border-navy px-6 py-3 font-semibold hover:bg-white">Stop camera</button>
-              : <button onClick={start} disabled={starting || SNAPSHOT} title={SNAPSHOT ? "Needs the live backend" : undefined} className="rounded-full bg-navy px-6 py-3 font-semibold text-white hover:bg-safelight hover:text-navy disabled:opacity-60">Start interpreting</button>}
+              : <button onClick={start} disabled={starting} className="rounded-full bg-navy px-6 py-3 font-semibold text-white hover:bg-safelight hover:text-navy disabled:opacity-60">Start interpreting</button>}
             {!on && <button onClick={runCheck} disabled={checking} className="rounded-full border border-navy px-6 py-3 font-semibold hover:bg-white disabled:opacity-60">{checking ? "Reading a clip…" : check ? "Try another clip" : "Check it without a camera"}</button>}
             {said.length > 0 && <button onClick={() => setSaid([])} className="rounded-full px-5 py-3 font-semibold text-indigo hover:bg-white">Clear transcript</button>}
           </div>

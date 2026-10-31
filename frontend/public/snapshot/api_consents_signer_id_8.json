@@ -1,1 +1,1 @@
-[{"signer_id":8,"consent_version":"signforge-mvp-v1","allowed_uses":["corpus_building"],"raw_video_retained":false,"created_at":"2026-10-30T13:52:37.962305Z","purpose":"Build a Indian Sign Language sign corpus (SIGNFORGE prototype)","id":8,"retention":"landmarks_only","status":"active"}]
+[{"signer_id":8,"consent_version":"signforge-mvp-v1","allowed_uses":["corpus_building"],"raw_video_retained":false,"created_at":"2026-10-30T13:52:37.962305Z","id":8,"purpose":"Build a Indian Sign Language sign corpus (SIGNFORGE prototype)","retention":"landmarks_only","status":"active"}]

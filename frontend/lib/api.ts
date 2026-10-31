@@ -1,3 +1,5 @@
+import type { Bundle, InFrame, interpretLocally } from "./localInterpret";
+
 // Public, non-secret base URL of the local FastAPI backend.
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -59,12 +61,22 @@ export type ActiveLearningQueueResponse = {
 export const SNAPSHOT = process.env.NEXT_PUBLIC_SNAPSHOT === "1";
 const snapshotKey = (path: string) => path.replace(/[^A-Za-z0-9]+/g, "_").replace(/^_+|_+$/g, ""); // matches export_snapshot.py
 
-async function fromSnapshot<T>(path: string, method: string): Promise<T> {
+const snapshotFile = (name: string) => fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/snapshot/${name}.json`).catch(() => null);
+let interpreter: Promise<{ bundle: Bundle; run: typeof interpretLocally }> | null = null;
+
+async function fromSnapshot<T>(path: string, method: string, body?: unknown): Promise<T> {
   const test = path.startsWith("/api/interpret/test-clip");
-  if (method !== "GET" && !test) {
-    throw new Error("This public demo is read-only. Run SIGNFORGE locally to record, review, train or read a live camera.");
+  if (path === "/api/interpret" && method === "POST") { // live camera: the same model, run in this browser
+    interpreter ??= Promise.all([snapshotFile("interpret_models").then((r) => r!.json()), import("./localInterpret")])
+      .then(([bundle, mod]) => ({ bundle, run: mod.interpretLocally }));
+    const { bundle, run } = await interpreter.catch((e) => { interpreter = null; throw e; });
+    const b = body as { frames: InFrame[]; project_id?: number | null };
+    return run(bundle, b.frames, b.project_id ?? null) as T;
   }
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/snapshot/${snapshotKey(path)}.json`).catch(() => null);
+  if (method !== "GET" && !test) {
+    throw new Error("This public demo is read-only. Run SIGNFORGE locally to record, review or train.");
+  }
+  const res = await snapshotFile(snapshotKey(path));
   if (!res?.ok) throw Object.assign(new Error("Not part of the public demo snapshot."), { status: 404 });
   const data = await res.json();
   return (test ? data[Math.floor(Math.random() * data.length)] : data) as T;
@@ -72,7 +84,7 @@ async function fromSnapshot<T>(path: string, method: string): Promise<T> {
 
 export async function api<T>(path: string, init?: { method?: string; body?: unknown }): Promise<T> {
   const method = init?.method ?? (init?.body ? "POST" : "GET");
-  if (SNAPSHOT) return fromSnapshot<T>(path, method);
+  if (SNAPSHOT) return fromSnapshot<T>(path, method, init?.body);
   let res: Response;
   try {
     res = await fetch(API_URL + path, {

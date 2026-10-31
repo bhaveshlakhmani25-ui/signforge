@@ -197,9 +197,11 @@ export default function LearnPage() {
               {cameraOn
                 ? <button onClick={tryIt} disabled={busy} className="rounded-full bg-navy px-6 py-3 font-semibold text-white hover:bg-safelight hover:text-navy disabled:opacity-60">
                     {attempt ? "Try again" : `Sign ${pick.gloss} (${TRY_SECONDS} s)`}</button>
-                : <button onClick={startCamera} disabled={SNAPSHOT} title={SNAPSHOT ? "Needs the live backend" : undefined} className="rounded-full bg-navy px-6 py-3 font-semibold text-white hover:bg-safelight hover:text-navy disabled:opacity-60">Start camera</button>}
+                : <button onClick={startCamera} className="rounded-full bg-navy px-6 py-3 font-semibold text-white hover:bg-safelight hover:text-navy disabled:opacity-60">Start camera</button>}
             </div>
-            <p className="text-sm text-indigo">Nothing is saved unless you choose to below. Only landmarks are ever sent, never video.</p>
+            <p className="text-sm text-indigo">{SNAPSHOT
+              ? "Nothing is saved or sent: in this public demo the model runs in your browser."
+              : "Nothing is saved unless you choose to below. Only landmarks are ever sent, never video."}</p>
 
             {r && attempt && (
               <div role="status" aria-live="polite" className={`border p-5 ${right ? "border-teal bg-teal/10" : "border-lavender bg-white"}`}>
@@ -219,7 +221,7 @@ export default function LearnPage() {
         </div>
       )}
 
-      {attempt && (
+      {attempt && !SNAPSHOT && (
         <section aria-labelledby="give-h" className={card}>
           <h2 id="give-h" className="display text-2xl font-semibold">3. Optional: add this attempt to the corpus</h2>
           <p className="mt-1 max-w-[70ch] text-sm text-indigo">

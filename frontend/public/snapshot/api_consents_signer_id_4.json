@@ -1,1 +1,1 @@
-[{"signer_id":4,"consent_version":"demo-v1","allowed_uses":["corpus_building"],"raw_video_retained":false,"created_at":"2026-10-22T09:16:34.668024Z","purpose":"DEMO DATA fixture (synthetic)","id":4,"retention":"landmarks_only","status":"active"}]
+[{"signer_id":4,"consent_version":"demo-v1","allowed_uses":["corpus_building"],"raw_video_retained":false,"created_at":"2026-10-22T09:16:34.668024Z","id":4,"purpose":"DEMO DATA fixture (synthetic)","retention":"landmarks_only","status":"active"}]

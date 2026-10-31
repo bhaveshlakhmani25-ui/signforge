@@ -32,3 +32,4 @@ backend/data/
 
 # generated Hugging Face Space bundle (contains data)
 deploy/space/
+deploy/pages/golden.json
