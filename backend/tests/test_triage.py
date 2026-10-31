@@ -145,3 +145,12 @@ def test_interpreter_language_list_and_project_choice(env):
     d = client.get("/api/demo-frames", params={"class_index": 0, "seed": 960}).json()
     r = client.post("/api/interpret", json={"frames": d["frames"], "project_id": env["p"]}).json()
     assert r["run_id"] == env["run_id"] and set(r["vocabulary"]) == {"A", "B"}
+
+
+def test_interpret_test_clip_reads_a_held_out_clip(env):
+    client = env["client"]
+    run = next(r for r in client.get("/api/models/runs", params={"project_id": env["p"]}).json() if r["id"] == env["run_id"])
+    r = client.post("/api/interpret/test-clip", params={"project_id": env["p"]}).json()
+    assert r["sample_id"] in run["test_sample_ids"] and r["true_sign"] in ("A", "B")
+    assert r["reading"]["run_id"] == env["run_id"] and r["reading"]["state"] in ("sign", "unsure")
+    assert client.post("/api/interpret/test-clip", params={"project_id": 999999}).status_code == 404

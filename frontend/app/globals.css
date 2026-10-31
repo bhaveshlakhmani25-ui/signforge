@@ -78,4 +78,4 @@ figcaption {
 :focus-visible { outline: 2px solid currentColor; outline-offset: 3px; border-radius: 2px; }
 
 /* The landing page is black edge to edge, including overscroll and anything below the footer. */
-html:has(.landing), body:has(.landing) { background: #0c0c0b; }
+html.landing-edge, html.landing-edge body { background: #0c0c0b; }

@@ -1,3 +1,4 @@
+import random
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -6,10 +7,12 @@ from sqlmodel import Session, select
 
 from app.api.projects import get_or_404
 from app.db import get_session
-from app.db.models import Project, Sample
+from app.db.models import Project, Sample, SignClass
 from app.schemas import Frame
 from app.services import interpret as interpreter
+from app.services import landmark_schema as S
 from app.services import triage
+from app.services.storage import load_features
 
 router = APIRouter(prefix="/api")
 
@@ -52,6 +55,22 @@ class InterpretIn(BaseModel):
 def interpret(body: InterpretIn, session: Session = Depends(get_session)):
     """Live interpretation of a short landmark window. Not stored, not linked to any signer."""
     return interpreter.interpret(session, [f.model_dump() for f in body.frames], body.project_id)
+
+
+@router.post("/interpret/test-clip")
+def interpret_test_clip(project_id: Optional[int] = None, session: Session = Depends(get_session)):
+    """Self-check without a camera: one random clip from the model's held-out test split, read by the same interpreter."""
+    run = triage.reference_run(session, project_id)
+    samples = [s for s in (session.get(Sample, i) for i in (run.test_sample_ids if run else [])) if s]
+    if not samples:
+        raise HTTPException(404, "No trained model with held-out test clips yet.")
+    sample = random.choice(samples)
+    f = load_features(sample.feature_path)
+    parts = (("pose", S.POSE), ("left_hand", S.LEFT_HAND), ("right_hand", S.RIGHT_HAND))
+    frames = [{"t": float(t), **{k: f["points"][i, sl].tolist() if f["present"][i, j] else None for j, (k, sl) in enumerate(parts)}}
+              for i, t in enumerate(f["t"])]
+    return {"sample_id": sample.id, "true_sign": session.get(SignClass, sample.sign_class_id).gloss,
+            "reading": interpreter.interpret(session, frames, run.project_id)}
 
 
 @router.get("/interpret/languages")

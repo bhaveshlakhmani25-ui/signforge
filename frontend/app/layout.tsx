@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Bodoni_Moda, Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
+import PageEdge from "@/components/PageEdge";
 import "./globals.css";
 
 // Self-hosted by next/font at build time: no font request is made at the venue.
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`h-full antialiased ${display.variable} ${body.variable} ${mono.variable}`}>
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full"><PageEdge />{children}</body>
     </html>
   );
 }

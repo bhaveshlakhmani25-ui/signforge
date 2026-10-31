@@ -4,6 +4,7 @@ import type { HolisticLandmarkerResult } from "@mediapipe/tasks-vision";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import CameraModes from "@/components/CameraModes";
+import LandmarkReplay from "@/components/LandmarkReplay";
 import { card, ErrorBanner } from "@/components/ui";
 import { api, type Frame } from "@/lib/api";
 import { expressionOf, GestureFilter, type Expression, type Gesture } from "@/lib/gestures";
@@ -16,6 +17,7 @@ type Reading = {
   message?: string; vocabulary: string[]; run_id?: number; calibration_passed?: boolean;
 };
 type Said = { sign: string; confidence: number; at: number; kind: "sign" | "gesture" };
+type Check = { sample_id: number; true_sign: string; reading: Reading };
 type Language = { project_id: number; name: string; target_language: string; run_id: number; n_signs: number; accuracy: number | null };
 
 const WINDOW_S = 2.5; // about one INCLUDE clip: the model reads the last 2.5 s of signing
@@ -44,6 +46,20 @@ export default function InterpretPage() {
   const langRef = useRef<number | null>(null);
   const gestures = useRef(new GestureFilter());
   const cues = useRef({ at: 0, gesture: "" as string | null });
+  const [check, setCheck] = useState<Check | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [tally, setTally] = useState({ right: 0, total: 0 });
+
+  // No camera needed: a held-out INCLUDE clip the model never trained on goes through the same interpreter.
+  async function runCheck() {
+    setError(""); setChecking(true);
+    try {
+      const c = await api<Check>(`/api/interpret/test-clip${langRef.current ? `?project_id=${langRef.current}` : ""}`, { method: "POST" });
+      setCheck(c);
+      setTally((t) => ({ right: t.right + (c.reading.state === "sign" && c.reading.sign === c.true_sign ? 1 : 0), total: t.total + 1 }));
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    setChecking(false);
+  }
 
   function onResult(r: HolisticLandmarkerResult) {
     const now = performance.now() / 1000;
@@ -60,7 +76,11 @@ export default function InterpretPage() {
       setGesture(g);
       setExpression(expressionOf(r));
       if (g && g.id !== cues.current.gesture) {
-        setSaid((prev) => [...prev, { sign: g.label, confidence: 1, at: Date.now(), kind: "gesture" as const }].slice(-12));
+        setSaid((prev) => {
+          const last = prev.at(-1);
+          if (last?.kind === "gesture" && last.sign === g.label && Date.now() - last.at < 4000) return prev; // a hand flickering out and back is one gesture
+          return [...prev, { sign: g.label, confidence: 1, at: Date.now(), kind: "gesture" as const }].slice(-12);
+        });
       }
       cues.current.gesture = g?.id ?? null;
     }
@@ -105,7 +125,7 @@ export default function InterpretPage() {
       await v.play();
       running.current = true;
       buffer.current = [];
-      setOn(true);
+      setOn(true); setCheck(null);
       trackVideo(v, () => !running.current, onResult).catch((e) => setError(String(e)));
     } catch (e) {
       const name = (e as { name?: string })?.name;
@@ -126,7 +146,7 @@ export default function InterpretPage() {
   useEffect(() => {
     api<Language[]>("/api/interpret/languages").then((ls) => {
       setLanguages(ls);
-      const pick = ls.at(-1)?.project_id ?? null;
+      const pick = [...ls].sort((x, y) => (y.accuracy ?? 0) - (x.accuracy ?? 0))[0]?.project_id ?? null; // start on the most accurate model
       setLang(pick); langRef.current = pick;
     }, () => {});
   }, []);
@@ -136,7 +156,7 @@ export default function InterpretPage() {
     return () => { window.clearInterval(id); running.current = false; stream.current?.getTracks().forEach((t) => t.stop()); };
   }, []); // read() only touches refs and stable setters, so the interval is set up once
 
-  const vocab = reading?.vocabulary ?? [];
+  const vocab = reading?.vocabulary ?? check?.reading.vocabulary ?? [];
   return (
     <div className="space-y-6">
       <header className="space-y-4">
@@ -154,7 +174,7 @@ export default function InterpretPage() {
           <span className="font-semibold">Read signing as</span>
           <select value={lang ?? ""} onChange={(e) => { const v = Number(e.target.value); setLang(v); langRef.current = v; setReading(null); }}
                   className="rounded-full border border-lavender bg-white px-4 py-2">
-            {languages.map((l) => <option key={l.project_id} value={l.project_id}>{l.target_language}: {l.name} ({l.n_signs} signs)</option>)}
+            {languages.map((l) => <option key={l.project_id} value={l.project_id}>{l.target_language}: {l.name} ({l.n_signs} signs{l.accuracy != null && `, ${(l.accuracy * 100).toFixed(0)}% on held-out clips`})</option>)}
           </select>
         </label>
       )}
@@ -175,12 +195,14 @@ export default function InterpretPage() {
                 ))}
               </div>
             )}
-            {!on && <p className="absolute inset-0 grid place-items-center text-lavender">{starting ? "Starting the camera…" : "Camera is off"}</p>}
+            {!on && check && <LandmarkReplay key={check.sample_id} sampleId={check.sample_id} className="absolute inset-0 h-full w-full" />}
+            {!on && !check && <p className="absolute inset-0 grid place-items-center text-lavender">{starting ? "Starting the camera…" : "Camera is off"}</p>}
           </div>
 
           {/* The reading, under the camera. */}
           <div role="status" aria-live="polite" className="min-h-[9rem] bg-navy p-5 text-[#efeee9]">
-            {!on ? <p className="text-lg text-[#efeee9]/70">Start the camera to begin interpreting.</p>
+            {!on && check ? <CheckResult check={check} tally={tally} accuracy={languages.find((l) => l.project_id === lang)?.accuracy ?? null} />
+              : !on ? <p className="text-lg text-[#efeee9]/70">Start the camera to begin interpreting, or check it on a held-out clip without a camera.</p>
               : !reading || reading.state === "waiting" ? <p className="text-lg text-[#efeee9]/70">Reading…</p>
               : reading.state === "sign" ? (
                 <div className="flex flex-wrap items-end justify-between gap-4">
@@ -231,6 +253,7 @@ export default function InterpretPage() {
             {on
               ? <button onClick={stop} className="rounded-full border border-navy px-6 py-3 font-semibold hover:bg-white">Stop camera</button>
               : <button onClick={start} disabled={starting} className="rounded-full bg-navy px-6 py-3 font-semibold text-white hover:bg-safelight hover:text-navy disabled:opacity-60">Start interpreting</button>}
+            {!on && <button onClick={runCheck} disabled={checking} className="rounded-full border border-navy px-6 py-3 font-semibold hover:bg-white disabled:opacity-60">{checking ? "Reading a clip…" : check ? "Try another clip" : "Check it without a camera"}</button>}
             {said.length > 0 && <button onClick={() => setSaid([])} className="rounded-full px-5 py-3 font-semibold text-indigo hover:bg-white">Clear transcript</button>}
           </div>
         </section>
@@ -269,6 +292,28 @@ function Confidence({ p, passed }: { p: number; passed?: boolean }) {
       <p className="flex justify-between text-sm text-[#efeee9]/70"><span>Confidence</span><span className="f-mono">{(p * 100).toFixed(0)}%</span></p>
       <div className="mt-1.5 h-1.5 bg-[#efeee9]/15"><div className="h-full bg-safelight" style={{ width: `${p * 100}%` }} /></div>
       {passed === false && <p className="mt-1 text-xs text-[#efeee9]/55">approximate</p>}
+    </div>
+  );
+}
+
+function CheckResult({ check, tally, accuracy }: { check: Check; tally: { right: number; total: number }; accuracy: number | null }) {
+  const r = check.reading, read = r.state === "sign" ? r.sign! : null, right = read === check.true_sign;
+  return (
+    <div>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-sm uppercase tracking-[0.1em] text-[#efeee9]/60">Held-out test clip #{check.sample_id}: the signer signed</p>
+          <p className="f-display text-[clamp(2rem,4vw,3rem)] font-semibold leading-none">{check.true_sign}</p>
+        </div>
+        {read && <Confidence p={r.confidence!} passed={r.calibration_passed} />}
+      </div>
+      <p className="mt-3 text-xl">
+        {read ? <>Read as <strong>{read}</strong>: <span className={right ? "text-safelight" : "text-red-300"}>{right ? "correct" : "wrong"}</span></> : r.message}
+      </p>
+      {r.top3 && <p className="mt-2 text-sm text-[#efeee9]/70">Closest: {r.top3.map((t) => `${t.sign} ${(t.p * 100).toFixed(0)}%`).join(" · ")}</p>}
+      <p className="mt-2 text-sm text-[#efeee9]/70">
+        This session: {tally.right} of {tally.total} read correctly.{accuracy != null && ` Model run #${r.run_id} scored ${(accuracy * 100).toFixed(0)}% on its whole held-out test set.`} The model never trained on these clips.
+      </p>
     </div>
   );
 }

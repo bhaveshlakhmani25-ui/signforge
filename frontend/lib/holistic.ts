@@ -25,6 +25,12 @@ export function loadHolistic() {
           runningMode: "VIDEO",
           outputFaceBlendshapes: true, // facial cues for the interpreter; stored samples never include the face
         });
+        // Some GPUs load the model but fail on the first frame (seen on a Mac: the face-blendshape graph
+        // is unsupported by the WebGL delegate). Run one blank frame now so that failure falls back to CPU.
+        const probe = document.createElement("canvas");
+        probe.width = probe.height = 64;
+        lastMs += 1;
+        try { landmarker.detectForVideo(probe, lastMs); } catch (e) { landmarker.close(); throw e; }
         return { landmarker, sha256, delegate };
       } catch (e) {
         if (delegate === "CPU") throw e; // no WebGL: fall back to CPU, and only fail if that fails too
@@ -55,7 +61,7 @@ export async function extractFromVideo(video: HTMLVideoElement, shouldStop: (t: 
   const frames: Frame[] = [];
   let t0: number | null = null;
   let lastT = 0, lastFrameAt = performance.now(), finished = false;
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const done = () => {
       if (finished) return;
       finished = true;
@@ -77,7 +83,8 @@ export async function extractFromVideo(video: HTMLVideoElement, shouldStop: (t: 
       if (shouldStop(t)) return done();
       const ms = Math.max(lastMs + 1, Math.round(meta.mediaTime * 1000)); // detectForVideo needs increasing timestamps
       lastMs = ms;
-      const r = landmarker.detectForVideo(video, ms);
+      let r: HolisticLandmarkerResult;
+      try { r = landmarker.detectForVideo(video, ms); } catch (e) { finished = true; clearInterval(watchdog); return reject(e); }
       frames.push(toFrame(r, t));
       onResult?.(r);
       video.requestVideoFrameCallback(step);
@@ -90,12 +97,15 @@ export async function extractFromVideo(video: HTMLVideoElement, shouldStop: (t: 
 export async function trackVideo(video: HTMLVideoElement, shouldStop: () => boolean, onResult: (r: HolisticLandmarkerResult) => void) {
   const { landmarker } = await loadHolistic();
   // Same clock as extractFromVideo (the video's own media time), so recording continues the preview's timeline smoothly.
-  const step = (_now: number, meta: VideoFrameCallbackMetadata) => {
-    if (shouldStop() || !video.srcObject) return;
-    const ms = Math.max(lastMs + 1, Math.round(meta.mediaTime * 1000));
-    lastMs = ms;
-    onResult(landmarker.detectForVideo(video, ms));
+  // Errors thrown inside a frame callback are otherwise lost, and tracking would silently stop.
+  return new Promise<void>((resolve, reject) => {
+    const step = (_now: number, meta: VideoFrameCallbackMetadata) => {
+      if (shouldStop() || !video.srcObject) return resolve();
+      const ms = Math.max(lastMs + 1, Math.round(meta.mediaTime * 1000));
+      lastMs = ms;
+      try { onResult(landmarker.detectForVideo(video, ms)); } catch (e) { return reject(e); }
+      video.requestVideoFrameCallback(step);
+    };
     video.requestVideoFrameCallback(step);
-  };
-  video.requestVideoFrameCallback(step);
+  });
 }
