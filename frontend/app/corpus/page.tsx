@@ -66,7 +66,7 @@ export default function CorpusPage() {
 
       {data && (
         <section aria-labelledby="coverage" className={card}>
-          <h2 id="coverage" className="font-semibold">Coverage by sign (real samples only; DEMO DATA excluded)</h2>
+          <h2 id="coverage" className="font-semibold">Coverage by sign (captured and external-dataset samples; DEMO DATA excluded)</h2>
           <div className="relative mt-3 overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="text-xs text-indigo"><tr>
@@ -102,7 +102,7 @@ export default function CorpusPage() {
           <div className="flex flex-wrap gap-3 text-sm">
             {([
               ["cls", "Sign", data.classes.map((c) => [String(c.id), c.gloss])],
-              ["source", "Source", [["captured", "Captured"], ["demo_fixture", "DEMO DATA"]]],
+              ["source", "Source", [["captured", "Captured"], ["external_dataset", "External dataset"], ["demo_fixture", "DEMO DATA"]]],
               ["review", "Review", Object.entries(STATUS).map(([k, [l]]) => [k, l])],
               ["qc", "Automated check", [["true", "Passed"], ["false", "Failed"]]],
             ] as [keyof Filters, string, string[][]][]).map(([key, label, opts]) => (
@@ -131,7 +131,7 @@ export default function CorpusPage() {
                         <td className="px-3 py-2">{s.id}</td>
                         <td className="px-3 py-2 font-medium">{gloss(s.sign_class_id)}</td>
                         <td className="px-3 py-2">{code(s.signer_id)}</td>
-                        <td className="px-3 py-2">{s.source === "demo_fixture" ? <DemoBadge /> : s.source}</td>
+                        <td className="px-3 py-2">{s.source === "demo_fixture" ? <DemoBadge /> : s.source === "external_dataset" ? `${s.dataset_name || "external"} (external)` : s.source}</td>
                         <td className="px-3 py-2">{s.frame_count} · {s.qc_metrics.duration_s ?? "?"}s</td>
                         <td className="px-3 py-2">
                           {s.qc_passed ? <span className="text-teal">Passed</span> : <span className="text-red-800">Failed</span>}
