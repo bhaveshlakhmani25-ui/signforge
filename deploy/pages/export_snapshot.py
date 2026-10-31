@@ -60,8 +60,10 @@ with TestClient(app) as c:
         for sign in (learn or {})["signs"] if learn else []:
             need_landmarks.update(sign["examples"])
         samples = get(f"/api/samples?project_id={pid}") or []
-        hello = next((s for s in samples if s["qc_passed"]), None)  # the landing plate takes the first HELLO that passed QC
-        need_landmarks.update(s["id"] for s in samples if s["qc_passed"] and s["sign_class_id"] == (hello or {}).get("sign_class_id"))
+        hello = {c["id"] for c in get(f"/api/sign-classes?project_id={pid}") if c["gloss"] == "HELLO"}
+        plate = next((s for s in samples if s["sign_class_id"] in hello and s["qc_passed"]), None)  # same pick as Landing.tsx
+        if plate:
+            need_landmarks.add(plate["id"])
     # Camera-free check: pre-read a pool of held-out clips per language; the page picks one at random.
     for L in langs:
         pool = {}

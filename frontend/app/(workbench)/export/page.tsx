@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { API_URL, api, type Project, type Sample, type SignClass } from "@/lib/api";
+import { API_URL, SNAPSHOT, api, type Project, type Sample, type SignClass } from "@/lib/api";
 import { card, ErrorBanner } from "@/components/ui";
 
 export default function ExportPage() {
@@ -132,13 +132,14 @@ export default function ExportPage() {
                 href={exportUrl}
                 download
                 className={`inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-colors ${
-                  eligibleSamples.length > 0
+                  eligibleSamples.length > 0 && !SNAPSHOT
                     ? "bg-teal hover:bg-teal/90 shadow-sm"
                     : "bg-slate-300 pointer-events-none cursor-not-allowed"
                 }`}
               >
                 Download Export Package (.zip)
               </a>
+              {SNAPSHOT && <p className="mt-2 text-xs text-indigo">The package is built by the backend, so download is off in this public read-only demo.</p>}
               <p className="mt-2 text-xs text-slate-500">
                 Package size: ~{(eligibleSamples.length * 0.04).toFixed(1)} MB compressed archive
               </p>
