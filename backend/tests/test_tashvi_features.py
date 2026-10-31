@@ -199,8 +199,7 @@ def test_delete_sample(client, setup_data):
 
     # Delete sample
     del_res = client.delete(f"/api/samples/{s['id']}")
-    assert del_res.status_code == 200
-    assert del_res.json()["deleted"] is True
+    assert del_res.status_code == 204
 
     # Feature file on disk must be removed
     assert not os.path.exists(feat_path)
@@ -226,10 +225,9 @@ def test_withdraw_consent(client, setup_data):
     }).raise_for_status()
 
     # Withdraw consent with delete_samples=False
-    r = client.post(f"/api/consents/{consent['id']}/withdraw", params={"delete_samples": False})
+    r = client.post(f"/api/consents/{consent['id']}/withdraw", json={"delete_samples": False})
     assert r.status_code == 200
-    assert r.json()["status"] == "withdrawn"
-    assert r.json()["samples_affected"] == 1
+    assert r.json() == {"status": "withdrawn", "deleted_samples": 0}
 
     # Check sample is now marked rejected and provenance note updated
     updated_sample = client.get(f"/api/samples", params={"project_id": setup_data["project_id"]}).json()
@@ -237,3 +235,17 @@ def test_withdraw_consent(client, setup_data):
     assert target is not None
     assert target["review_status"] == "rejected"
     assert "[CONSENT WITHDRAWN]" in target["provenance_note"]
+
+
+def test_import_external_dataset_manifest(setup_data):
+    from sqlmodel import Session
+    from app.db import engine
+    from app.services.external_dataset import import_external_dataset_from_manifest
+    from scripts.import_external import generate_mock_include_subset
+
+    manifest_path = generate_mock_include_subset("data/external/test_include")
+    with Session(engine) as session:
+        res = import_external_dataset_from_manifest(manifest_path, setup_data["project_id"], session)
+        assert res["dataset_name"] == "INCLUDE"
+        assert res["imported"] > 0
+

@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const LIVE = [["/", "Overview"], ["/capture", "Capture"], ["/corpus", "Corpus & review"], ["/models", "Models & evaluation"]] as const;
+const LIVE = [["/", "Overview"], ["/capture", "Capture"], ["/corpus", "Corpus & review"], ["/models", "Models & evaluation"],
+                    ["/active-learning", "Active learning"], ["/benchmark", "Benchmark"]] as const;
 // Shown so the roadmap is visible, but disabled: these pages are not built yet.
-const PLANNED = ["Active learning", "Export", "Project settings"];
+const PLANNED = ["Export", "Project settings"];
 
 export default function Nav() {
   const path = usePathname();

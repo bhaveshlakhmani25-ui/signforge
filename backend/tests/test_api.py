@@ -123,3 +123,54 @@ def test_capture_with_another_signers_consent_is_403(client, ids):
     other = client.post("/api/signers", json={"project_id": ids["project_id"], "code": "OTHER-1"}).json()
     r = client.post("/api/samples/capture", json=capture_body(client, ids, signer_id=other["id"]))
     assert r.status_code == 403
+
+
+def new_signer(client, ids, code, uses=("corpus_building", "model_training")):
+    signer = client.post("/api/signers", json={"project_id": ids["project_id"], "code": code}).json()
+    consent = client.post("/api/consents", json={
+        "signer_id": signer["id"], "consent_version": "v1", "purpose": "test", "allowed_uses": list(uses),
+        "retention": "landmarks_only", "confirmed": True}).json()
+    return {**ids, "signer_id": signer["id"], "consent_id": consent["id"]}
+
+
+def test_delete_sample_removes_file_row_and_reviews(client, ids):
+    s = client.post("/api/samples/capture", json=capture_body(client, ids, frames=client.get(
+        "/api/demo-frames", params={"seed": 41}).json()["frames"])).json()
+    client.post(f"/api/samples/{s['id']}/review", json={"reviewer_code": "R-01", "reviewer_role": "team_non_signer",
+                                                        "decision": "approved"})
+    assert os.path.exists(s["feature_path"])
+    assert client.delete(f"/api/samples/{s['id']}").status_code == 204
+    assert not os.path.exists(s["feature_path"])
+    assert s["id"] not in [x["id"] for x in client.get("/api/samples", params={"project_id": ids["project_id"]}).json()]
+    assert client.get(f"/api/samples/{s['id']}/reviews").json() == []
+    assert client.delete(f"/api/samples/{s['id']}").status_code == 404
+    again = client.post("/api/samples/capture", json=capture_body(client, ids, frames=client.get(
+        "/api/demo-frames", params={"seed": 42}).json()["frames"])).json()
+    assert again["id"] > s["id"]  # a deleted id is never handed to a new recording
+
+
+def test_withdraw_blocks_capture_and_training_and_can_delete_samples(client, ids):
+    from app.api.models import eligible_samples
+    from app.db import engine
+    from sqlmodel import Session
+
+    w = new_signer(client, ids, "W-01")
+    s = client.post("/api/samples/capture", json=capture_body(client, w, frames=client.get(
+        "/api/demo-frames", params={"seed": 51}).json()["frames"])).json()
+    client.post(f"/api/samples/{s['id']}/review", json={"reviewer_code": "R-01", "reviewer_role": "team_non_signer",
+                                                        "decision": "approved"})
+    with Session(engine) as db:
+        assert s["id"] in [x.id for x in eligible_samples(db, ids["project_id"], "real")]
+
+    r = client.post(f"/api/consents/{w['consent_id']}/withdraw", json={"delete_samples": False})
+    assert r.status_code == 200 and r.json() == {"status": "withdrawn", "deleted_samples": 0}
+    assert os.path.exists(s["feature_path"])  # kept, but no longer usable
+    assert client.post("/api/samples/capture", json=capture_body(client, w)).status_code == 403
+    with Session(engine) as db:
+        assert s["id"] not in [x.id for x in eligible_samples(db, ids["project_id"], "real")]
+
+    again = client.post(f"/api/consents/{w['consent_id']}/withdraw", json={"delete_samples": True})
+    assert again.json() == {"status": "withdrawn", "deleted_samples": 1}  # repeatable, and now erases
+    assert not os.path.exists(s["feature_path"])
+    assert client.post("/api/consents/999999/withdraw", json={"delete_samples": True}).status_code == 404
+    assert client.post(f"/api/consents/{w['consent_id']}/withdraw", json={}).status_code == 422
