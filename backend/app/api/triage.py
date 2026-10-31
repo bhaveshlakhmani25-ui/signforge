@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
@@ -43,9 +45,22 @@ def rerun(project_id: int, session: Session = Depends(get_session)):
 
 class InterpretIn(BaseModel):
     frames: list[Frame] = Field(max_length=300)  # about 10 s at 30 fps; the client sends ~2.5 s
+    project_id: Optional[int] = None  # whose model reads the signing (e.g. the ISL or the ASL project); latest if absent
 
 
 @router.post("/interpret")
 def interpret(body: InterpretIn, session: Session = Depends(get_session)):
     """Live interpretation of a short landmark window. Not stored, not linked to any signer."""
-    return interpreter.interpret(session, [f.model_dump() for f in body.frames])
+    return interpreter.interpret(session, [f.model_dump() for f in body.frames], body.project_id)
+
+
+@router.get("/interpret/languages")
+def languages(session: Session = Depends(get_session)):
+    """Projects that have a calibrated model the interpreter can use, one per sign language/dataset."""
+    out = []
+    for p in session.exec(select(Project).order_by(Project.id)).all():
+        run = triage.reference_run(session, p.id)
+        if run:
+            out.append({"project_id": p.id, "name": p.name, "target_language": p.target_language, "run_id": run.id,
+                        "n_signs": len(run.metrics["train_classes"]), "accuracy": run.metrics.get("accuracy")})
+    return out

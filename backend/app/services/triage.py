@@ -26,8 +26,11 @@ def status_of(sample: Sample) -> str:
     return HUMAN.get(sample.review_status) or sample.triage_status or "needs_review"
 
 
-def reference_run(session: Session) -> ModelRun | None:
-    runs = session.exec(select(ModelRun).where(ModelRun.status == "succeeded").order_by(ModelRun.id.desc())).all()
+def reference_run(session: Session, project_id: int | None = None) -> ModelRun | None:
+    q = select(ModelRun).where(ModelRun.status == "succeeded")
+    if project_id is not None:  # the interpreter picks a language by picking the project its model was trained in
+        q = q.where(ModelRun.project_id == project_id)
+    runs = session.exec(q.order_by(ModelRun.id.desc())).all()
     return next((r for r in runs if r.metrics.get("calibration") and r.weights_path), None)
 
 

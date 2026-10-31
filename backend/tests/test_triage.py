@@ -135,3 +135,13 @@ def test_interpret_reads_a_window_without_storing_it(env):
     no_hands = [dict(f, left_hand=None, right_hand=None) for f in d["frames"]]
     assert client.post("/api/interpret", json={"frames": no_hands}).json()["state"] == "no_hands"
     assert client.post("/api/interpret", json={"frames": d["frames"][:3]}).json()["state"] == "waiting"
+
+
+def test_interpreter_language_list_and_project_choice(env):
+    client = env["client"]
+    langs = client.get("/api/interpret/languages").json()
+    mine = next(l for l in langs if l["project_id"] == env["p"])
+    assert mine["n_signs"] == 2 and mine["run_id"] == env["run_id"]
+    d = client.get("/api/demo-frames", params={"class_index": 0, "seed": 960}).json()
+    r = client.post("/api/interpret", json={"frames": d["frames"], "project_id": env["p"]}).json()
+    assert r["run_id"] == env["run_id"] and set(r["vocabulary"]) == {"A", "B"}

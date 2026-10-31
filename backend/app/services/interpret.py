@@ -15,8 +15,8 @@ from app.services.calibration import softmax
 from app.services.preprocessing import frames_to_arrays, model_input
 
 
-def interpret(session: Session, frames: list[dict]) -> dict:
-    run = triage.reference_run(session)
+def interpret(session: Session, frames: list[dict], project_id: int | None = None) -> dict:
+    run = triage.reference_run(session, project_id)
     if run is None:
         return {"state": "no_model", "message": "No trained model yet, so nothing can be interpreted.", "vocabulary": []}
     m = run.metrics

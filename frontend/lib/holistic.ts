@@ -23,6 +23,7 @@ export function loadHolistic() {
         const landmarker = await HolisticLandmarker.createFromOptions(vision, {
           baseOptions: { modelAssetBuffer: buf, delegate },
           runningMode: "VIDEO",
+          outputFaceBlendshapes: true, // facial cues for the interpreter; stored samples never include the face
         });
         return { landmarker, sha256, delegate };
       } catch (e) {

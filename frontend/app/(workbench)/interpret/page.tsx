@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import CameraModes from "@/components/CameraModes";
 import { card, ErrorBanner } from "@/components/ui";
 import { api, type Frame } from "@/lib/api";
+import { expressionOf, GestureFilter, type Expression, type Gesture } from "@/lib/gestures";
 import { loadHolistic, toFrame, trackVideo } from "@/lib/holistic";
 import { drawSkeleton, EMPTY, smooth } from "@/lib/skeleton";
 
@@ -14,7 +15,8 @@ type Reading = {
   sign?: string; confidence?: number; top3?: { sign: string; p: number }[];
   message?: string; vocabulary: string[]; run_id?: number; calibration_passed?: boolean;
 };
-type Said = { sign: string; confidence: number; at: number };
+type Said = { sign: string; confidence: number; at: number; kind: "sign" | "gesture" };
+type Language = { project_id: number; name: string; target_language: string; run_id: number; n_signs: number; accuracy: number | null };
 
 const WINDOW_S = 2.5; // about one INCLUDE clip: the model reads the last 2.5 s of signing
 const EVERY_MS = 600; // how often the window is read
@@ -35,6 +37,13 @@ export default function InterpretPage() {
   const [reading, setReading] = useState<Reading | null>(null);
   const [said, setSaid] = useState<Said[]>([]);
   const [hands, setHands] = useState({ left: false, right: false });
+  const [gesture, setGesture] = useState<Gesture | null>(null);
+  const [expression, setExpression] = useState<Expression | null>(null);
+  const [languages, setLanguages] = useState<Language[]>([]);
+  const [lang, setLang] = useState<number | null>(null);
+  const langRef = useRef<number | null>(null);
+  const gestures = useRef(new GestureFilter());
+  const cues = useRef({ at: 0, gesture: "" as string | null });
 
   function onResult(r: HolisticLandmarkerResult) {
     const now = performance.now() / 1000;
@@ -44,6 +53,17 @@ export default function InterpretPage() {
     h.left = r.leftHandLandmarks[0] ? ms : h.left;
     h.right = r.rightHandLandmarks[0] ? ms : h.right;
     if (ms - h.at > 200) { h.at = ms; setHands({ left: ms - h.left < 400, right: ms - h.right < 400 }); }
+    // Gestures and facial cues are read every frame but shown a few times a second.
+    const g = gestures.current.push(r);
+    if (ms - cues.current.at > 250) {
+      cues.current.at = ms;
+      setGesture(g);
+      setExpression(expressionOf(r));
+      if (g && g.id !== cues.current.gesture) {
+        setSaid((prev) => [...prev, { sign: g.label, confidence: 1, at: Date.now(), kind: "gesture" as const }].slice(-12));
+      }
+      cues.current.gesture = g?.id ?? null;
+    }
     const v = video.current, c = canvas.current;
     if (!v || !c) return;
     if (c.width !== v.videoWidth) { c.width = v.videoWidth; c.height = v.videoHeight; }
@@ -58,15 +78,15 @@ export default function InterpretPage() {
     inFlight.current = true;
     const t0 = buffer.current[0].t;
     try {
-      const r = await api<Reading>("/api/interpret", { body: { frames: buffer.current.map((f) => ({ ...f, t: f.t - t0 })) } });
+      const r = await api<Reading>("/api/interpret", { body: { frames: buffer.current.map((f) => ({ ...f, t: f.t - t0 })), project_id: langRef.current } });
       if (!running.current) return;
       setReading(r);
       const s = r.state === "sign" ? r.sign! : null;
       if (s && s === pending.current) {
         setSaid((prev) => {
-          const last = prev.at(-1);
+          const last = prev.filter((x) => x.kind === "sign").at(-1);
           if (last?.sign === s && Date.now() - last.at < 4000) return prev; // the same sign held for a while is one sign
-          return [...prev, { sign: s, confidence: r.confidence!, at: Date.now() }].slice(-12);
+          return [...prev, { sign: s, confidence: r.confidence!, at: Date.now(), kind: "sign" as const }].slice(-12);
         });
       }
       pending.current = s;
@@ -100,8 +120,16 @@ export default function InterpretPage() {
     stream.current = null;
     if (video.current) video.current.srcObject = null;
     canvas.current?.getContext("2d")?.clearRect(0, 0, canvas.current.width, canvas.current.height);
-    setOn(false); setReading(null); pending.current = null;
+    setOn(false); setReading(null); setGesture(null); setExpression(null); pending.current = null;
   }
+
+  useEffect(() => {
+    api<Language[]>("/api/interpret/languages").then((ls) => {
+      setLanguages(ls);
+      const pick = ls.at(-1)?.project_id ?? null;
+      setLang(pick); langRef.current = pick;
+    }, () => {});
+  }, []);
 
   useEffect(() => {
     const id = window.setInterval(read, EVERY_MS);
@@ -121,6 +149,15 @@ export default function InterpretPage() {
           </p>
         </div>
       </header>
+      {languages.length > 0 && (
+        <label className="flex flex-wrap items-center gap-3 text-base">
+          <span className="font-semibold">Read signing as</span>
+          <select value={lang ?? ""} onChange={(e) => { const v = Number(e.target.value); setLang(v); langRef.current = v; setReading(null); }}
+                  className="rounded-full border border-lavender bg-white px-4 py-2">
+            {languages.map((l) => <option key={l.project_id} value={l.project_id}>{l.target_language}: {l.name} ({l.n_signs} signs)</option>)}
+          </select>
+        </label>
+      )}
       {error && <ErrorBanner message={error} onRetry={() => { setError(""); if (!on) start(); }} />}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
@@ -169,6 +206,27 @@ export default function InterpretPage() {
             )}
           </div>
 
+          {on && (
+            <dl className="grid gap-3 sm:grid-cols-2">
+              <div className={`border p-4 ${gesture?.tone === "offensive" ? "border-red-700 bg-red-50" : "border-lavender bg-white"}`}>
+                <dt className="text-sm text-indigo">Hand gesture</dt>
+                <dd className="mt-1">
+                  {gesture ? <><span className={`text-xl font-semibold ${gesture.tone === "offensive" ? "text-red-900" : ""}`}>{gesture.label}</span>
+                    <span className="mt-1 block text-sm text-indigo">{gesture.meaning}</span></>
+                    : <span className="text-base text-indigo">None held</span>}
+                </dd>
+              </div>
+              <div className="border border-lavender bg-white p-4">
+                <dt className="text-sm text-indigo">Facial expression <span className="text-xs">(a cue, not your mood)</span></dt>
+                <dd className="mt-1">
+                  {expression ? <><span className="text-xl font-semibold">{expression.label}</span>
+                    {expression.note && <span className="mt-1 block text-sm text-indigo">{expression.note}</span>}</>
+                    : <span className="text-base text-indigo">Face not in view</span>}
+                </dd>
+              </div>
+            </dl>
+          )}
+
           <div className="flex flex-wrap gap-3">
             {on
               ? <button onClick={stop} className="rounded-full border border-navy px-6 py-3 font-semibold hover:bg-white">Stop camera</button>
@@ -180,10 +238,12 @@ export default function InterpretPage() {
         <aside className="space-y-6">
           <section aria-labelledby="said-h" className={card}>
             <h2 id="said-h" className="display text-2xl font-semibold">Transcript</h2>
-            <p className="mt-1 text-sm text-indigo">A sign is added once it is read twice in a row.</p>
+            <p className="mt-1 text-sm text-indigo">A sign is added once it is read twice in a row; held hand gestures appear in [brackets].</p>
             {said.length === 0
               ? <p className="mt-4 text-base text-indigo">Nothing yet.</p>
-              : <p className="f-display mt-4 text-[1.8rem] leading-snug">{said.map((s) => s.sign.toLowerCase().replaceAll("-", " ")).join(" · ")}</p>}
+              : <p className="f-display mt-4 text-[1.8rem] leading-snug">{said.map((x, i) => (
+                  <span key={i}>{i > 0 && " · "}{x.kind === "gesture" ? <em className="text-indigo">[{x.sign.toLowerCase()}]</em> : x.sign.toLowerCase().replaceAll("-", " ")}</span>
+                ))}</p>}
           </section>
 
           <section aria-labelledby="vocab-h" className={card}>
