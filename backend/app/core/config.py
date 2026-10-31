@@ -25,3 +25,4 @@ BASELINE = {"hidden": 64, "epochs": 80, "lr": 1e-3, "weight_decay": 1e-4}
 TEST_FRACTION = 0.2  # random clip split only; signer-independent splits hold out whole signers
 MIN_SIGNERS_FOR_SIGNER_SPLIT = 3
 CHECKPOINT_DIR = Path(os.environ.get("SIGNFORGE_CHECKPOINT_DIR", BACKEND_DIR / "checkpoints"))
+BENCHMARK_PATH = Path(os.environ.get("SIGNFORGE_BENCHMARK_PATH", BACKEND_DIR.parent / "data" / "benchmark_results.json"))

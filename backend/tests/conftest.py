@@ -6,3 +6,4 @@ _tmp = tempfile.mkdtemp(prefix="signforge-test-")
 os.environ["DATABASE_URL"] = f"sqlite:///{_tmp}/test.db"
 os.environ["SIGNFORGE_DATA_DIR"] = f"{_tmp}/processed"
 os.environ["SIGNFORGE_CHECKPOINT_DIR"] = f"{_tmp}/checkpoints"
+os.environ["SIGNFORGE_BENCHMARK_PATH"] = f"{_tmp}/benchmark_results.json"

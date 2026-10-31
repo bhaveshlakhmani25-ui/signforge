@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import active_learning, export, models, projects, samples
+from app.api import active_learning, benchmark, export, models, projects, samples
 from app.core import config as C
 from app.db import init_db
 from app.services import demo_fixture
@@ -24,6 +24,7 @@ app.include_router(samples.router)
 app.include_router(models.router)
 app.include_router(active_learning.router)
 app.include_router(export.router)
+app.include_router(benchmark.router)
 
 
 @app.get("/", include_in_schema=False)

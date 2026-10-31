@@ -1,22 +1,22 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { api } from "@/lib/api";
 import { card, DemoBadge, ErrorBanner } from "@/components/ui";
 
-// Written by the benchmark script (one JSON file). Schema version 1.
+// Served by GET /api/benchmark, which reads the benchmark script's data/benchmark_results.json and converts either known layout to this one.
 type Curve = { mean: number[]; std: number[] };
 type Score = { n_train: number; accuracy: number; macro_f1: number };
 type Benchmark = {
   schema_version: number; generated_at: string; is_demo?: boolean;
-  dataset: { name: string; n_signs: number; split: string; source: string };
-  protocol: string; metric: string; seeds: number[]; samples_added: number[];
+  dataset: { name: string; n_signs: number | null; split: string; source: string };
+  protocol: string; metric: string; seeds: number[]; samples_added: number[]; frozen_test_samples?: number | null;
   curves: Record<string, Curve>;
   before_after?: { before: Score; after: Score; added_samples: number };
   transfer?: { status: string; detail: string };
   notes?: string[];
 };
 
-const FILE = "/benchmark/benchmark.json";
 const USE_FIXTURE = process.env.NEXT_PUBLIC_USE_FIXTURES === "1";
 const STYLE: Record<string, { color: string; dash?: string; label: string }> = {
   ranker: { color: "#3b3f9e", label: "Ranker (SIGNFORGE)" },
@@ -24,15 +24,16 @@ const STYLE: Record<string, { color: string; dash?: string; label: string }> = {
   random: { color: "#64748b", dash: "2 3", label: "Random" },
 };
 const pct = (v: number) => `${(v * 100).toFixed(1)}%`;
+const metricName = (m: string) => ({ macro_f1: "Macro-F1", accuracy: "Accuracy" })[m] ?? m;
 
 async function fetchBenchmark(): Promise<Benchmark | null> {
-  let res = await fetch(FILE, { cache: "no-store" });
-  if (res.status === 404 && USE_FIXTURE) res = await fetch("/benchmark/benchmark.sample.json", { cache: "no-store" });
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`The benchmark file could not be read (HTTP ${res.status}).`);
-  const b = (await res.json().catch(() => null)) as Benchmark | null;
-  if (!b || b.schema_version !== 1 || !b.curves || !b.samples_added) throw new Error("The benchmark file is not in the expected format (schema_version 1).");
-  return b;
+  try {
+    return await api<Benchmark>("/api/benchmark");
+  } catch (e) {
+    if ((e as { status?: number }).status !== 404) throw e; // a malformed file (422) is shown as an error, never as results
+    if (!USE_FIXTURE) return null;
+    return (await fetch("/benchmark/benchmark.sample.json", { cache: "no-store" })).json(); // DEMO DATA, carries is_demo
+  }
 }
 
 function verdict(b: Benchmark) {
@@ -52,7 +53,7 @@ function Chart({ b }: { b: Benchmark }) {
   const x = (v: number) => L + (v / xmax) * (W - L - R);
   const y = (v: number) => T + (1 - Math.min(1, Math.max(0, v))) * (H - T - B);
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${b.metric} against samples added, for ${Object.keys(b.curves).join(", ")}. The table below gives the exact values.`} className="w-full max-w-2xl">
+    <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${metricName(b.metric)} against samples added, for ${Object.keys(b.curves).join(", ")}. The table below gives the exact values.`} className="w-full max-w-2xl">
       {[0, 0.25, 0.5, 0.75, 1].map((t) => (
         <g key={t}><line x1={L} x2={W - R} y1={y(t)} y2={y(t)} stroke="#c9c6f2" strokeWidth="1" />
           <text x={L - 6} y={y(t) + 4} textAnchor="end" fontSize="11" fill="#14163a">{Math.round(t * 100)}%</text></g>
@@ -90,13 +91,13 @@ export default function BenchmarkPage() {
       </header>
       {error && <ErrorBanner message={error} onRetry={() => { setError(""); reload(); }} />}
       {b === undefined && !error && <p className="text-sm">Loading the benchmark…</p>}
-      {b === null && <p className={`${card} text-sm`}>Not evaluated yet. No benchmark file has been produced, so there is nothing to show. Run the benchmark script to create <code>frontend/public/benchmark/benchmark.json</code>.</p>}
+      {b === null && <p className={`${card} text-sm`}>Not evaluated yet. No benchmark file has been produced, so there is nothing to show. Run the benchmark script to create <code>data/benchmark_results.json</code>.</p>}
 
       {b && (
         <>
           {b.is_demo && <p className="rounded-xl border border-amber-300 bg-amber-100 p-3 text-sm text-amber-950">This is a fixture with invented numbers, shown to check the layout. Do not quote anything on this page.</p>}
           <section aria-labelledby="curves" className={`${card} space-y-3`}>
-            <h2 id="curves" className="font-semibold">Accuracy against samples added</h2>
+            <h2 id="curves" className="font-semibold">{metricName(b.metric)} against samples added</h2>
             {sentence && <p className="max-w-[58ch] text-sm font-medium">{sentence}</p>}
             <Chart b={b} />
             <ul className="flex flex-wrap gap-x-5 gap-y-1 text-xs">
@@ -108,7 +109,7 @@ export default function BenchmarkPage() {
             </ul>
             <div className="relative overflow-x-auto">
               <table className="text-sm">
-                <caption className="pb-1 text-left text-xs">{b.metric} (mean ± std) by samples added</caption>
+                <caption className="pb-1 text-left text-xs">{metricName(b.metric)} (mean ± std) by samples added</caption>
                 <thead><tr><th scope="col" className="p-1 text-left font-medium">Strategy</th>
                   {b.samples_added.map((n) => <th key={n} scope="col" className="p-1 font-medium tabular-nums">{n}</th>)}</tr></thead>
                 <tbody>
@@ -119,8 +120,8 @@ export default function BenchmarkPage() {
                 </tbody>
               </table>
             </div>
-            <p className="max-w-[58ch] text-xs"><strong>Data:</strong> {b.dataset.name} ({b.dataset.n_signs} signs, source: {b.dataset.source.replaceAll("_", " ")}). <strong>Split:</strong> {b.dataset.split}.
-              {" "}<strong>Seeds:</strong> {b.seeds.join(", ")}. <strong>Protocol:</strong> {b.protocol} <strong>Generated:</strong> {new Date(b.generated_at).toLocaleString()}.</p>
+            <p className="max-w-[58ch] text-xs"><strong>Data:</strong> {b.dataset.name} ({b.dataset.n_signs ?? "?"} signs, source: {b.dataset.source.replaceAll("_", " ")}). <strong>Split:</strong> {b.dataset.split}{b.frozen_test_samples != null && `, ${b.frozen_test_samples} frozen test samples`}.
+              {" "}<strong>Seeds:</strong> {b.seeds.join(", ")}. <strong>Protocol:</strong> {b.protocol} <strong>Generated:</strong> {b.generated_at ? new Date(b.generated_at).toLocaleString() : "not stated"}.</p>
           </section>
 
           {b.before_after && (
