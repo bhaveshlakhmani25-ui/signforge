@@ -10,6 +10,7 @@ MIN_VAL_CLIPS = 3        # fewer validation clips than this per sign -> status "
 # F2 triage
 VERIFY_MIN_CONF = 0.70   # calibrated confidence needed to auto-accept as model_verified
 AUDIT_RATE = 0.15        # share of model_verified clips still sent to a human reviewer
+VERIFY_MARGIN = 0.05     # confidence this close to VERIFY_MIN_CONF goes to review: the extractor alone moves it ~0.04 (docs/EXTRACTOR_COMPARISON.md)
 # DUP_EPSILON is added in step 4, set from measured same-sign nearest-neighbour distances, not guessed.
 
 # Step 3 calibration
